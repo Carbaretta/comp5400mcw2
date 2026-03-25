@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life - Infinite Edition</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent-color: #10b981;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .navbar-custom {
+            background-color: var(--card-bg);
+            border-bottom: 1px solid #334155;
+            padding: 0.75rem 1.5rem;
+            z-index: 100;
+        }
+
+        .canvas-container {
+            flex-grow: 1;
+            background-color: #000;
+            position: relative;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+        }
+
+        .ui-panel {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(30, 41, 59, 0.9);
+            backdrop-filter: blur(8px);
+            padding: 1rem 1.5rem;
+            border-radius: 1rem;
+            border: 1px solid #334155;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            z-index: 101;
+        }
+
+        .btn-speed {
+            width: 100px;
+        }
+
+        .stats-panel {
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            pointer-events: none;
+        }
+
+        .controls-hint {
+            position: absolute;
+            top: 1rem;
+            left: 1.5rem;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            pointer-events: none;
+        }
+
+        .btn-custom {
+            border: none;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-custom:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+    <div class="navbar-custom d-flex justify-content-between align-items-center">
+        <h1 class="h5 mb-0 fw-bold">Infinite Game of Life</h1>
+        <div>
+            <span id="statusBadge" class="badge bg-secondary me-2">Stopped</span>
+            <span id="speedDisplay" class="badge bg-info text-dark">1x Speed</span>
+        </div>
+    </div>
+
+    <div class="canvas-container" id="container">
+        <div class="controls-hint">
+            <b>Left Click:</b> Draw/Erase<br>
+            <b>Right Click/Drag:</b> Pan View<br>
+            <b>Scroll:</b> Zoom
+        </div>
+        <div class="stats-panel" id="stats">
+            Cells: 0 | Gen: 0
+        </div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <div class="ui-panel">
+        <button id="startBtn" class="btn btn-success btn-custom">▶ Start</button>
+        <button id="stopBtn" class="btn btn-warning btn-custom">⏸ Stop</button>
+        <button id="ffBtn" class="btn btn-info btn-custom text-dark">⏩ Fast Forward</button>
+        <div class="vr mx-2 bg-secondary"></div>
+        <button id="resetBtn" class="btn btn-primary btn-custom">↻ Random</button>
+        <button id="clearBtn" class="btn btn-danger btn-custom">⌧ Clear</button>
+        <div class="vr mx-2 bg-secondary"></div>
+        <div class="d-flex flex-column align-items-center">
+            <span class="badge mb-1" style="font-size: 0.6rem; color: #94a3b8;">DRAW MODE</span>
+            <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="drawMode" id="cellMode" checked>
+                <label class="btn btn-outline-success btn-sm" for="cellMode">Bacteria</label>
+                <input type="radio" class="btn-check" name="drawMode" id="agarMode">
+                <label class="btn btn-outline-warning btn-sm" for="agarMode">Agar</label>
+            </div>
+        </div>
+        <div class="d-flex flex-column align-items-center ms-3">
+            <span class="badge mb-1" style="font-size: 0.6rem; color: #94a3b8;">MAX AGAR SIZE</span>
+            <input type="range" class="form-range" id="agarSizeSlider" min="1" max="50" value="20" style="width: 100px;">
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('container');
+        const statsPanel = document.getElementById('stats');
+        const speedDisplay = document.getElementById('speedDisplay');
+        const statusBadge = document.getElementById('statusBadge');
+
+        // Game State
+        let bacteria = new Map(); // coord -> { mutations, age }
+        let agar = new Map(); // coord -> { nutrition }
+        let generation = 0;
+        let running = false;
+        let speed = 1;
+        let interval = 100;
+
+        // Viewport State
+        let offsetX = 0; // Middle of screen by default
+        let offsetY = 0;
+        let scale = 15; // px per cell
+        
+        // Interaction State
+        let isPanning = false;
+        let isDrawing = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let drawValue = 1;
+
+        function resize() {
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            draw();
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Sparse Grid Logic
+        function getNeighbors(x, y) {
+            return [
+                `${x-1},${y-1}`, `${x},${y-1}`, `${x+1},${y-1}`,
+                `${x-1},${y}`,               `${x+1},${y}`,
+                `${x-1},${y+1}`, `${x},${y+1}`, `${x+1},${y+1}`
+            ];
+        }
+
+        function getExtendedNeighbors(x, y, radius = 2) {
+            const result = [];
+            for (let dx = -radius; dx <= radius; dx++) {
+                for (let dy = -radius; dy <= radius; dy++) {
+                    if (dx === 0 && dy === 0) continue;
+                    result.push(`${x + dx},${y + dy}`);
+                }
+            }
+            return result;
+        }
+
+        function findNearAgar(x, y) {
+            // Check within distance 2 (5x5 area)
+            const area = getExtendedNeighbors(x, y, 2);
+            area.push(`${x},${y}`); // Including own cell
+            for (const coord of area) {
+                if (agar.has(coord) && agar.get(coord).nutrition > 0) {
+                    return coord;
+                }
+            }
+            return null;
+        }
+
+        function step() {
+            const counts = new Map();
+            bacteria.forEach((data, coord) => {
+                const [x, y] = coord.split(',').map(Number);
+                const neighbors = getNeighbors(x, y);
+                neighbors.forEach(nCoord => {
+                    counts.set(nCoord, (counts.get(nCoord) || 0) + 1);
+                });
+            });
+
+            const nextBacteria = new Map();
+            const deaths = [];
+
+            // 1. Existing Bacteria survival
+            bacteria.forEach((data, coord) => {
+                const [x, y] = coord.split(',').map(Number);
+                const count = counts.get(coord) || 0;
+                
+                const nearAgarCoord = findNearAgar(x, y);
+                const isImmortal = !!nearAgarCoord;
+
+                // Mutation & Aging
+                let mutations = data.mutations;
+                let age = data.age + 1;
+                if (Math.random() < 0.05) mutations++;
+
+                // Death Rules
+                let staysAlive = false;
+                if (isImmortal) {
+                    staysAlive = true;
+                    // Drain nutrition
+                    const agarCell = agar.get(nearAgarCoord);
+                    agarCell.nutrition--;
+                    if (agarCell.nutrition <= 0) agar.delete(nearAgarCoord);
+                } else {
+                    // Standard GOL + Mutation death
+                    if (count >= 2 && count <= 3 && mutations < 10) {
+                        staysAlive = true;
+                    }
+                }
+
+                if (staysAlive) {
+                    nextBacteria.set(coord, { mutations, age });
+                }
+            });
+
+            // 2. Birth rules
+            counts.forEach((count, coord) => {
+                if (!bacteria.has(coord) && count === 3) {
+                    nextBacteria.set(coord, { mutations: 0, age: 0 });
+                }
+            });
+
+            bacteria = nextBacteria;
+            generation++;
+        }
+
+        function draw() {
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const midX = canvas.width / 2;
+            const midY = canvas.height / 2;
+
+            // Draw Agar (Nutrition)
+            agar.forEach((data, coord) => {
+                const [x, y] = coord.split(',').map(Number);
+                const screenX = midX + (x * scale) + offsetX;
+                const screenY = midY + (y * scale) + offsetY;
+
+                if (screenX + scale < 0 || screenX > canvas.width || 
+                    screenY + scale < 0 || screenY > canvas.height) return;
+
+                // Color based on nutrition intensity
+                const opacity = Math.min(1, 0.2 + (data.nutrition / 100));
+                ctx.fillStyle = `rgba(251, 191, 36, ${opacity})`; // Amber
+                ctx.fillRect(screenX, screenY, scale - 1, scale - 1);
+            });
+
+            // Draw Bacteria
+            bacteria.forEach((data, coord) => {
+                const [x, y] = coord.split(',').map(Number);
+                const screenX = midX + (x * scale) + offsetX;
+                const screenY = midY + (y * scale) + offsetY;
+
+                if (screenX + scale < 0 || screenX > canvas.width || 
+                    screenY + scale < 0 || screenY > canvas.height) return;
+
+                // Color based on mutations (Greener -> Redder)
+                const hue = Math.max(0, 140 - (data.mutations * 14)); 
+                ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                ctx.fillRect(screenX + 1, screenY + 1, scale - 2, scale - 2);
+            });
+
+            statsPanel.innerText = `Bacteria: ${bacteria.size} | Agar: ${agar.size} | Gen: ${generation}`;
+        }
+
+        let lastTick = 0;
+        function loop(timestamp) {
+            if (!running) return;
+
+            if (timestamp - lastTick > interval) {
+                for (let i = 0; i < speed; i++) {
+                    step();
+                }
+                draw();
+                lastTick = timestamp;
+            }
+            requestAnimationFrame(loop);
+        }
+
+        // Controls
+        document.getElementById('startBtn').onclick = () => {
+            if (!running) {
+                running = true;
+                statusBadge.innerText = 'Running';
+                statusBadge.className = 'badge bg-success';
+                requestAnimationFrame(loop);
+            }
+        };
+
+        document.getElementById('stopBtn').onclick = () => {
+            running = false;
+            statusBadge.innerText = 'Stopped';
+            statusBadge.className = 'badge bg-secondary';
+        };
+
+        document.getElementById('ffBtn').onclick = () => {
+            speed = speed === 1 ? 5 : (speed === 5 ? 20 : 1);
+            speedDisplay.innerText = `${speed}x Speed`;
+            if (speed > 1) {
+                speedDisplay.className = 'badge bg-warning text-dark';
+            } else {
+                speedDisplay.className = 'badge bg-info text-dark';
+            }
+        };
+
+        document.getElementById('clearBtn').onclick = () => {
+            bacteria.clear();
+            agar.clear();
+            generation = 0;
+            draw();
+        };
+
+        document.getElementById('resetBtn').onclick = () => {
+            bacteria.clear();
+            agar.clear();
+            generation = 0;
+            // Seed a small central cluster of bacteria
+            for(let i=0; i<300; i++) {
+                const x = Math.floor(Math.random() * 40 - 20);
+                const y = Math.floor(Math.random() * 40 - 20);
+                bacteria.set(`${x},${y}`, { mutations: 0, age: 0 });
+            }
+            // Seed multi-cellular agar clusters
+            for (let i=0; i<10; i++) {
+                const centerX = Math.floor(Math.random() * 60 - 30);
+                const centerY = Math.floor(Math.random() * 60 - 30);
+                const size = Math.floor(Math.random() * 15) + 5;
+                for (let j=0; j<size; j++) {
+                    const x = centerX + Math.floor(Math.random() * 5 - 2);
+                    const y = centerY + Math.floor(Math.random() * 5 - 2);
+                    agar.set(`${x},${y}`, { nutrition: 100 });
+                }
+            }
+            draw();
+        };
+
+        // Interaction
+        container.onmousedown = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (e.button === 0) { // Left Click
+                isDrawing = true;
+                const midX = canvas.width / 2;
+                const midY = canvas.height / 2;
+                const x = Math.floor((mouseX - midX - offsetX) / scale);
+                const y = Math.floor((mouseY - midY - offsetY) / scale);
+                const coord = `${x},${y}`;
+
+                const mode = document.getElementById('agarMode').checked ? 'agar' : 'cell';
+                
+                if (mode === 'cell') {
+                    if (agar.has(coord)) return; 
+                    drawValue = bacteria.has(coord) ? 0 : 1;
+                    if (drawValue) bacteria.set(coord, { mutations: 0, age: 0 });
+                    else bacteria.delete(coord);
+                } else {
+                    drawValue = agar.has(coord) ? 0 : 1;
+                    if (drawValue) {
+                        const maxSize = parseInt(document.getElementById('agarSizeSlider').value);
+                        const clusterSize = Math.floor(Math.random() * maxSize) + 1;
+                        for (let i = 0; i < clusterSize; i++) {
+                            const nx = x + Math.floor(Math.random() * 5 - 2);
+                            const ny = y + Math.floor(Math.random() * 5 - 2);
+                            const ncoord = `${nx},${ny}`;
+                            agar.set(ncoord, { nutrition: 100 });
+                            bacteria.delete(ncoord);
+                        }
+                    } else {
+                        // Erase single agar cell or cluster? Let's just erase single for precision
+                        agar.delete(coord);
+                    }
+                }
+            } else if (e.button === 2 || e.button === 1) { // Right or Middle
+                isPanning = true;
+            }
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            draw();
+        };
+
+        window.onmousemove = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (isPanning) {
+                offsetX += e.clientX - lastMouseX;
+                offsetY += e.clientY - lastMouseY;
+                draw();
+            } else if (isDrawing) {
+                const midX = canvas.width / 2;
+                const midY = canvas.height / 2;
+                const x = Math.floor((mouseX - midX - offsetX) / scale);
+                const y = Math.floor((mouseY - midY - offsetY) / scale);
+                const coord = `${x},${y}`;
+                
+                const mode = document.getElementById('agarMode').checked ? 'agar' : 'cell';
+
+                if (mode === 'cell') {
+                    if (!agar.has(coord)) {
+                        if (drawValue) bacteria.set(coord, { mutations: 0, age: 0 });
+                        else bacteria.delete(coord);
+                    }
+                } else {
+                    if (drawValue) {
+                        // Drawing clusters while dragging is a bit chaotic, 
+                        // let's just draw single agar cells for drag-painting
+                        agar.set(coord, { nutrition: 100 });
+                        bacteria.delete(coord);
+                    } else {
+                        agar.delete(coord);
+                    }
+                }
+                draw();
+            }
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        };
+
+        window.onmouseup = () => {
+            isPanning = false;
+            isDrawing = false;
+        };
+
+        container.oncontextmenu = (e) => e.preventDefault();
+
+        container.onwheel = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = (e.clientX - rect.left);
+            const mouseY = (e.clientY - rect.top);
+
+            const zoomAmount = e.deltaY > 0 ? 0.9 : 1.1;
+            const newScale = Math.max(2, Math.min(100, scale * zoomAmount));
+            
+            // Adjust offsets to zoom towards mouse position
+            const midX = canvas.width / 2;
+            const midY = canvas.height / 2;
+            const localMouseX = mouseX - midX - offsetX;
+            const localMouseY = mouseY - midY - offsetY;
+
+            const ratio = newScale / scale;
+            offsetX -= localMouseX * (ratio - 1);
+            offsetY -= localMouseY * (ratio - 1);
+            
+            scale = newScale;
+            draw();
+        };
+
+        // Init
+        document.getElementById('resetBtn').click();
+    </script>
+</body>
+</html>
