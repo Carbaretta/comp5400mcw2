@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fish Sim (Pro)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0f172a;
+            color: #cbd5e1;
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar {
+            background: rgba(15, 23, 42, 0.95);
+            border-bottom: 1px solid #1e293b;
+            z-index: 10;
+            padding: 0.5rem 1.5rem;
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            color: #f8fafc;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .brand-icon {
+            color: #3b82f6;
+            font-size: 1.25rem;
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 56px);
+        }
+
+        .sidebar {
+            width: 320px;
+            background: #0f172a;
+            border-right: 1px solid #1e293b;
+            padding: 1.5rem 1rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            background: #1e293b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        canvas {
+            background: linear-gradient(180deg, #020617 0%, #0f172a 100%);
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            cursor: crosshair;
+            outline: none;
+        }
+
+        .section-header {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #64748b;
+            margin-bottom: 0.75rem;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #1e293b;
+            padding-bottom: 0.25rem;
+        }
+
+        .stat-val {
+            font-size: 1.25rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
+        }
+
+        .form-label {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.1rem;
+        }
+
+        .form-range {
+            height: 1.2rem;
+        }
+
+        .form-switch .form-check-input {
+            width: 2.5em;
+            height: 1.25em;
+            cursor: pointer;
+        }
+
+        /* Presentation Mode Styles */
+        body.presentation-mode .navbar {
+            display: none !important;
+        }
+
+        body.presentation-mode .sidebar {
+            display: none !important;
+        }
+
+        body.presentation-mode .main-container {
+            height: 100vh !important;
+        }
+
+        body.presentation-mode .canvas-area {
+            padding: 0 !important;
+        }
+
+        body.presentation-mode canvas {
+            border-radius: 0;
+            box-shadow: none;
+            background: linear-gradient(180deg, #3b82f6 0%, #1e3a8a 100%);
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <i class="bi bi-water brand-icon"></i> Fish Sim <span
+                class="badge bg-primary ms-2 text-uppercase fs-6 px-3">Pro</span>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div>
+                <div class="section-header">Simulation State</div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <div class="stat-val text-info" id="stat-fish">0</div>
+                        <div class="small text-muted text-uppercase" style="font-size:0.65rem">Fish</div>
+                    </div>
+                    <div>
+                        <div class="stat-val text-danger" id="stat-predators">0</div>
+                        <div class="small text-muted text-uppercase" style="font-size:0.65rem">Predators</div>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-info flex-fill" onclick="App.spawnFish(50)"><i
+                            class="bi bi-plus-lg"></i> 50 Fish</button>
+                    <button class="btn btn-sm btn-outline-danger flex-fill" onclick="App.spawnPredator()"><i
+                            class="bi bi-plus-lg"></i> Predator</button>
+                </div>
+                <div class="d-flex gap-2 mt-2">
+                    <button class="btn btn-sm btn-secondary flex-fill" onclick="App.clearAll()"><i
+                            class="bi bi-trash"></i> Clear</button>
+                    <button class="btn btn-sm btn-primary flex-fill" onclick="App.togglePresentationMode()"><i
+                            class="bi bi-display"></i> Presentation</button>
+                </div>
+                <div class="small text-muted mt-1 text-center" style="font-size:0.65rem">Press ESC to exit presentation
+                    mode</div>
+            </div>
+
+            <div>
+                <div class="section-header">Features</div>
+                <div class="form-check form-switch mb-2 d-flex align-items-center gap-2">
+                    <input class="form-check-input" type="checkbox" role="switch" id="inp-eating" checked
+                        onchange="State.eatingEnabled = this.checked">
+                    <label class="form-check-label mb-0 pt-1" for="inp-eating" style="font-size:0.875rem">Predators Eat
+                        Fish</label>
+                </div>
+                <div class="form-check form-switch mb-2 d-flex align-items-center gap-2">
+                    <input class="form-check-input" type="checkbox" role="switch" id="inp-fov" checked
+                        onchange="State.useFOV = this.checked">
+                    <label class="form-check-label mb-0 pt-1" for="inp-fov" style="font-size:0.875rem">Limited FOV
+                        (Behind Blindspot)</label>
+                </div>
+                <div class="form-check form-switch mb-2 d-flex align-items-center gap-2">
+                    <input class="form-check-input" type="checkbox" role="switch" id="inp-cluster"
+                        onchange="State.targetClusters = this.checked">
+                    <label class="form-check-label mb-0 pt-1" for="inp-cluster" style="font-size:0.875rem">Target
+                        Clusters (Agglomerative)</label>
+                </div>
+            </div>
+
+            <div>
+                <div class="section-header">Flocking Weights</div>
+
+                <div class="mb-3">
+                    <label class="form-label"><span>Separation</span> <span id="lbl-sep">1.5</span></label>
+                    <input type="range" class="form-range" id="inp-sep" min="0" max="5" step="0.1" value="1.5"
+                        oninput="State.wSep=parseFloat(this.value); document.getElementById('lbl-sep').innerText=this.value;">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label"><span>Alignment</span> <span id="lbl-ali">1.0</span></label>
+                    <input type="range" class="form-range" id="inp-ali" min="0" max="5" step="0.1" value="1.0"
+                        oninput="State.wAli=parseFloat(this.value); document.getElementById('lbl-ali').innerText=this.value;">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label"><span>Cohesion</span> <span id="lbl-coh">1.0</span></label>
+                    <input type="range" class="form-range" id="inp-coh" min="0" max="5" step="0.1" value="1.0"
+                        oninput="State.wCoh=parseFloat(this.value); document.getElementById('lbl-coh').innerText=this.value;">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-danger"><span>Predator Fear Response</span> <span
+                            id="lbl-pred">4.0</span></label>
+                    <input type="range" class="form-range" id="inp-pred" min="0" max="10" step="0.1" value="4.0"
+                        oninput="State.wPred=parseFloat(this.value); document.getElementById('lbl-pred').innerText=this.value;">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-warning"><span>Panic Contagion</span> <span
+                            id="lbl-panic">2.0</span></label>
+                    <input type="range" class="form-range" id="inp-panic" min="0" max="5" step="0.1" value="2.0"
+                        oninput="State.wPanic=parseFloat(this.value); document.getElementById('lbl-panic').innerText=this.value;">
+                    <div class="small text-muted" style="font-size: 0.65rem">Copying fleeing behaviors of neighbors
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label"><span>Organic Noise</span> <span id="lbl-noise">0.5</span></label>
+                    <input type="range" class="form-range" id="inp-noise" min="0" max="2" step="0.1" value="0.5"
+                        oninput="State.wNoise=parseFloat(this.value); document.getElementById('lbl-noise').innerText=this.value;">
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-area" id="canvas-wrapper">
+            <canvas id="sim-canvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Vector Math Utility
+         */
+        class Vec2 {
+            constructor(x, y) { this.x = x; this.y = y; }
+            add(v) { return new Vec2(this.x + v.x, this.y + v.y); }
+            sub(v) { return new Vec2(this.x - v.x, this.y - v.y); }
+            mult(n) { return new Vec2(this.x * n, this.y * n); }
+            div(n) { return new Vec2(this.x / n, this.y / n); }
+            mag() { return Math.hypot(this.x, this.y); }
+            magSq() { return this.x * this.x + this.y * this.y; }
+            normalize() { const m = this.mag(); return m === 0 ? new Vec2(0, 0) : this.div(m); }
+            limit(max) { if (this.magSq() > max * max) { return this.normalize().mult(max); } return this; }
+            dist(v) { return this.sub(v).mag(); }
+            dot(v) { return this.x * v.x + this.y * v.y; }
+            copy() { return new Vec2(this.x, this.y); }
+        }
+
+        const State = {
+            wSep: 1.5,
+            wAli: 1.0,
+            wCoh: 1.0,
+            wPred: 4.0,
+            wPanic: 2.0,
+            wNoise: 0.5,
+            useFOV: true,
+            fovAngle: Math.PI * 0.75, // 135 deg either side = 270 deg total FOV
+            eatingEnabled: true,
+            targetClusters: false,
+            presentationMode: false,
+        };
+
+        class Fish {
+            constructor(x, y) {
+                this.pos = new Vec2(x, y);
+                this.vel = new Vec2(Math.random() - 0.5, Math.random() - 0.5).normalize().mult(2);
+                this.acc = new Vec2(0, 0);
+
+                // Speed & Agility configurations. Just set to random values. No particularly relevance to these floats.
+                this.cruiseSpeed = 1.8;
+                this.panicSpeed = 4.2;
+                this.maxForce = 0.05; // Turning inertia limitation
+                this.r = 3;
+
+                // Senses
+                this.perceptionRadius = 50;
+                this.separationRadius = 20;
+                this.predatorRadius = 120;
+
+                // State
+                this.dead = false;
+                this.isPanicking = false;
+            }
+
+            applyForce(f) {
+                this.acc = this.acc.add(f);
+            }
+
+            checkFOV(otherPos) {
+                if (!State.useFOV) return true;
+                let diff = otherPos.sub(this.pos);
+                if (diff.magSq() === 0) return true;
+
+                let heading = this.vel.magSq() > 0 ? this.vel.normalize() : new Vec2(1, 0);
+                let dotPos = heading.dot(diff.normalize());
+                // Acos of dot gives angle. If angle < fovAngle, it's visible.
+                return Math.acos(dotPos) < State.fovAngle;
+            }
+
+            flock(fishes, predators) {
+                let sep = this.separate(fishes);
+                let ali = this.align(fishes);
+                let coh = this.cohesion(fishes);
+                let flee = this.flee(predators);
+                let panicWave = this.copyPanic(fishes);
+
+                // random noise
+                let noise = new Vec2(Math.random() - 0.5, Math.random() - 0.5).normalize().mult(State.wNoise * this.maxForce * 0.5);
+
+                sep = sep.mult(State.wSep);
+                ali = ali.mult(State.wAli);
+                coh = coh.mult(State.wCoh);
+                flee = flee.mult(State.wPred);
+                panicWave = panicWave.mult(State.wPanic);
+
+                // If actively panicking directly from a predator, ignore calm cohesion and alignment
+                if (this.isPanicking && flee.magSq() > 0) {
+                    ali = ali.mult(0.1);
+                    coh = coh.mult(0.05);
+                }
+
+                this.applyForce(sep);
+                this.applyForce(ali);
+                this.applyForce(coh);
+                this.applyForce(flee);
+                this.applyForce(panicWave);
+                this.applyForce(noise);
+            }
+
+            seek(target, maxSpd) {
+                let desired = target.sub(this.pos);
+                desired = desired.normalize().mult(maxSpd);
+                let steer = desired.sub(this.vel);
+                return steer.limit(this.maxForce);
+            }
+
+            flee(predators) {
+                let steer = new Vec2(0, 0);
+                let count = 0;
+                this.isPanicking = false;
+
+                for (let p of predators) {
+                    let d = this.pos.dist(p.pos);
+                    if (d < this.predatorRadius) {
+                        // If they are right behind us out of FOV, it's less strictly avoided until very close
+                        if (!this.checkFOV(p.pos) && d > this.predatorRadius * 0.5) continue;
+
+                        let diff = this.pos.sub(p.pos);
+                        if (diff.magSq() === 0) diff = new Vec2(Math.random() - 0.5, Math.random() - 0.5);
+                        diff = diff.normalize().div(d);
+                        steer = steer.add(diff);
+                        count++;
+                        this.isPanicking = true;
+                    }
+                }
+                if (count > 0) {
+                    steer = steer.div(count);
+                    if (steer.magSq() > 0) {
+                        steer = steer.normalize().mult(this.panicSpeed).sub(this.vel).limit(this.maxForce * 4); // allow sharp evasive turns
+                    }
+                }
+                return steer;
+            }
+
+            copyPanic(fishes) {
+                let sum = new Vec2(0, 0);
+                let count = 0;
+
+                // If we are already running from a direct predator threat, don't just blindly copy neighbors
+                if (this.isPanicking) return new Vec2(0, 0);
+
+                for (let other of fishes) {
+                    if (other === this || other.dead) continue;
+                    let d = this.pos.dist(other.pos);
+                    if (d > 0 && d < this.perceptionRadius && this.checkFOV(other.pos)) {
+                        if (other.isPanicking) {
+                            sum = sum.add(other.vel);
+                            count++;
+                        }
+                    }
+                }
+
+                if (count > 0) {
+                    // Become panicking synthetically due to neighbor contagion
+                    this.isPanicking = true;
+                    sum = sum.div(count).normalize().mult(this.panicSpeed);
+                    return sum.sub(this.vel).limit(this.maxForce * 2);
+                }
+                return new Vec2(0, 0);
+            }
+
+            separate(fishes) {
+                // Returns a force vector that steers the fish away from crowded neighbors
+                let steer = new Vec2(0, 0);
+                let count = 0;
+                
+                for (let other of fishes) {
+                    if (other === this || other.dead) continue;
+                    
+                    let d = this.pos.dist(other.pos);
+                    
+                    // If the other fish is within the physical separation threshold
+                    if (d > 0 && d < this.separationRadius) {
+                        // 1. Calculate a vector pointing AWAY from the neighbor (this.pos - other.pos)
+                        let diff = this.pos.sub(other.pos);
+                        
+                        // 2. Normalize it (length = 1) so we only capture the pure direction
+                        diff = diff.normalize();
+                        
+                        // 3. Weight by distance: divide by distance 'd'
+                        // This makes closer fish exert an exponentially stronger repulsive force
+                        diff = diff.div(d);
+                        
+                        steer = steer.add(diff);
+                        count++;
+                    }
+                }
+                
+                if (count > 0) {
+                    // Average out all the accumulated repulsive vectors
+                    steer = steer.div(count);
+                    
+                    if (steer.magSq() > 0) {
+                        // Craig Reynolds' Steering Formula: Steer = Desired Velocity - Current Velocity
+                        
+                        // A. Form the "Desired Velocity" by scaling our escape direction to our current target speed
+                        let targetSpeed = this.isPanicking ? this.panicSpeed : this.cruiseSpeed;
+                        steer = steer.normalize().mult(targetSpeed);
+                        
+                        // B. Subtract our current actual velocity to find the force delta required to achieve the desire
+                        steer = steer.sub(this.vel);
+                        
+                        // C. Limit the applied force by our physical turning constraints (mass/inertia)
+                        // We allow a *1.5 multiplier here so fish can turn slightly sharper to avoid direct collisions
+                        steer = steer.limit(this.maxForce * 1.5);
+                    }
+                }
+                return steer;
+            }
+
+            align(fishes) {
+                let sum = new Vec2(0, 0);
+                let count = 0;
+                for (let other of fishes) {
+                    if (other === this || other.dead) continue;
+                    let d = this.pos.dist(other.pos);
+                    if (d > 0 && d < this.perceptionRadius && this.checkFOV(other.pos)) {
+                        sum = sum.add(other.vel);
+                        count++;
+                    }
+                }
+                if (count > 0) {
+                    let targetSpd = this.isPanicking ? this.panicSpeed : this.cruiseSpeed;
+                    sum = sum.div(count).normalize().mult(targetSpd);
+                    return sum.sub(this.vel).limit(this.maxForce);
+                }
+                return new Vec2(0, 0);
+            }
+
+            cohesion(fishes) {
+                let sum = new Vec2(0, 0);
+                let count = 0;
+                for (let other of fishes) {
+                    if (other === this || other.dead) continue;
+                    let d = this.pos.dist(other.pos);
+                    if (d > 0 && d < this.perceptionRadius && this.checkFOV(other.pos)) {
+                        sum = sum.add(other.pos);
+                        count++;
+                    }
+                }
+                if (count > 0) {
+                    sum = sum.div(count);
+                    return this.seek(sum, this.cruiseSpeed);
+                }
+                return new Vec2(0, 0);
+            }
+
+            update(w, h) {
+                // Speed Regulation
+                if (!this.isPanicking && this.vel.mag() < this.cruiseSpeed) {
+                    // gently boost up to cruise speed if slacking
+                    this.acc = this.acc.add(this.vel.normalize().mult(0.01));
+                }
+
+                this.vel = this.vel.add(this.acc);
+
+                let localMax = this.isPanicking ? this.panicSpeed : this.cruiseSpeed * 1.2;
+                this.vel = this.vel.limit(localMax);
+
+                this.pos = this.pos.add(this.vel);
+                this.acc = new Vec2(0, 0);
+
+                // Soft drift boundaries instead of hard wrap if we wanted, but toriodal is better for boids
+                if (this.pos.x < -this.r) this.pos.x = w + this.r;
+                if (this.pos.y < -this.r) this.pos.y = h + this.r;
+                if (this.pos.x > w + this.r) this.pos.x = -this.r;
+                if (this.pos.y > h + this.r) this.pos.y = -this.r;
+            }
+        }
+
+        class Predator {
+            constructor(x, y) {
+                this.pos = new Vec2(x, y);
+                this.vel = new Vec2(Math.random() - 0.5, Math.random() - 0.5).normalize().mult(2.5);
+                this.acc = new Vec2(0, 0);
+                this.maxSpeed = 3.6; // Highly persistent
+                this.maxForce = 0.04;
+                this.perceptionCircle = 250;
+                this.r = 8;
+                this.currentTargetPos = null;
+            }
+
+            applyForce(f) { this.acc = this.acc.add(f); }
+
+            hunt(fishes) {
+                this.currentTargetPos = null;
+
+                // Decoupled Eating Logic (Always eat if touching a fish)
+                let eatingTarget = null;
+                let minEatDist = Infinity;
+                for (let f of fishes) {
+                    if (f.dead) continue;
+                    let d = this.pos.dist(f.pos);
+                    if (d < minEatDist) {
+                        minEatDist = d;
+                        eatingTarget = f;
+                    }
+                }
+
+                if (State.eatingEnabled && eatingTarget && minEatDist < this.r + eatingTarget.r) {
+                    eatingTarget.dead = true;
+                }
+
+                let targetPos = null;
+
+                if (State.targetClusters) {
+                    // Agglomerative Clustering via Disjoint Set Union (Single Linkage)
+                    // Regular agglom clustering was too computationally intense
+                    // O(N^3) vs O(N^2)
+                    const CLUSTER_THRESH_SQ = 60 * 60; // 60px merge distance
+
+                    // Build DSU. To begin with, every fish is it's own parent
+                    let parent = new Int32Array(fishes.length);
+                    for (let i = 0; i < fishes.length; i++) parent[i] = i;
+
+                    // Used to determine what cluster a fish belongs to. Uses a linked list
+                    // and moves through it recursively
+                    function find(i) {
+                        if (parent[i] === i) return i;
+                        return parent[i] = find(parent[i]);
+                    }
+
+                    // used for merging two clusters
+                    function union(i, j) {
+                        let rootI = find(i);
+                        let rootJ = find(j);
+                        if (rootI !== rootJ) parent[rootI] = rootJ;
+                    }
+
+                    // If fish are within the threshold distance of each other,
+                    // we put them in the same cluster. On^2 complexity.
+                    for (let i = 0; i < fishes.length; i++) {
+                        if (fishes[i].dead) continue;
+                        for (let j = i + 1; j < fishes.length; j++) {
+                            if (fishes[j].dead) continue;
+                            let dx = fishes[i].pos.x - fishes[j].pos.x;
+                            let dy = fishes[i].pos.y - fishes[j].pos.y;
+                            let dsq = dx * dx + dy * dy;
+                            if (dsq < CLUSTER_THRESH_SQ) {
+                                union(i, j);
+                            }
+                        }
+                    }
+
+                    // Calculate cluster centroids
+                    let clusterSums = new Map();
+
+                    // add up all the coordinates for all the fish in a cluster
+                    // then average them to get a cluster centroid.
+                    for (let i = 0; i < fishes.length; i++) {
+                        if (fishes[i].dead) continue;
+                        let root = find(i);
+                        if (!clusterSums.has(root)) {
+                            clusterSums.set(root, { sum: new Vec2(0, 0), count: 0 });
+                        }
+                        let data = clusterSums.get(root);
+                        data.sum = data.sum.add(fishes[i].pos);
+                        data.count++;
+                    }
+
+                    let centroids = [];
+                    for (let [root, data] of clusterSums.entries()) {
+                        if (data.count > 0) {
+                            centroids.push({ pos: data.sum.div(data.count), size: data.count });
+                        }
+                    }
+
+                    // Sweep centroids dynamically weighted by cluster density map
+                    let minScore = Infinity;
+
+                    // The predator chooses which cluster to target dependent on both proximity and cluster size
+                    // so the size of the cluster is a multiplier.
+                    for (let c of centroids) {
+                        let d = this.pos.dist(c.pos);
+                        // Can only see clusters if they are reasonably within perception (extended slightly by cluster size)
+                        if (d < this.perceptionCircle * (1 + c.size * 0.02)) {
+                            // Weigh the distance inversely by the square root of cluster size
+                            let score = d / Math.sqrt(c.size);
+                            if (score < minScore) {
+                                minScore = score;
+                                targetPos = c.pos;
+                            }
+                        }
+                    }
+                }
+
+                // Fallback or targetClusters == false: Target closest individual
+                if (!targetPos) {
+                    let closest = null;
+                    let minDist = this.perceptionCircle;
+                    for (let f of fishes) {
+                        if (f.dead) continue;
+                        let d = this.pos.dist(f.pos);
+                        if (d < minDist) {
+                            minDist = d;
+                            closest = f;
+                        }
+                    }
+                    if (closest) targetPos = closest.pos;
+                }
+
+                if (targetPos) {
+                    this.currentTargetPos = targetPos;
+                    let desired = targetPos.sub(this.pos).normalize().mult(this.maxSpeed);
+                    let steer = desired.sub(this.vel).limit(this.maxForce * 1.5);
+                    this.applyForce(steer);
+                } else {
+                    // Idle wander organically if no fish in radius
+                    if (Math.random() < 0.1) {
+                        let wander = new Vec2(Math.random() - 0.5, Math.random() - 0.5).mult(this.maxForce);
+                        this.applyForce(wander);
+                    }
+                }
+            }
+
+            update(w, h) {
+                this.vel = this.vel.add(this.acc);
+                this.vel = this.vel.limit(this.maxSpeed);
+                this.pos = this.pos.add(this.vel);
+                this.acc = new Vec2(0, 0);
+
+                if (this.pos.x < -this.r) this.pos.x = w + this.r;
+                if (this.pos.y < -this.r) this.pos.y = h + this.r;
+                if (this.pos.x > w + this.r) this.pos.x = -this.r;
+                if (this.pos.y > h + this.r) this.pos.y = -this.r;
+            }
+        }
+
+        const App = {
+            canvas: document.getElementById('sim-canvas'),
+            ctx: document.getElementById('sim-canvas').getContext('2d'),
+            fishes: [],
+            predators: [],
+            animFrame: null,
+
+            init() {
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+                window.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && State.presentationMode) {
+                        this.togglePresentationMode();
+                    }
+                });
+                this.spawnFish(150);
+                this.loop();
+            },
+
+            togglePresentationMode() {
+                State.presentationMode = !State.presentationMode;
+                if (State.presentationMode) {
+                    document.body.classList.add('presentation-mode');
+                } else {
+                    document.body.classList.remove('presentation-mode');
+                }
+                setTimeout(() => this.resize(), 50); // Delay slightly for DOM to update wrapper size
+            },
+
+            resize() {
+                const wrap = document.getElementById('canvas-wrapper');
+                // Temporarily hide canvas so the parent wrapper can naturally shrink back during layout
+                this.canvas.style.display = 'none';
+                let newW = wrap.clientWidth;
+                let newH = wrap.clientHeight;
+                this.canvas.style.display = 'block';
+
+                this.canvas.width = newW;
+                this.canvas.height = newH;
+            },
+
+            /**
+             * Push more fish onto the stack at random coordinates
+            */
+            spawnFish(n) {
+                for (let i = 0; i < n; i++) {
+                    let x = Math.random() * this.canvas.width;
+                    let y = Math.random() * this.canvas.height;
+                    this.fishes.push(new Fish(x, y));
+                }
+                this.updateStats();
+            },
+
+            /**
+             * Same as above, one predator at a time.
+             * **/
+            spawnPredator() {
+                let x = Math.random() * this.canvas.width;
+                let y = Math.random() * this.canvas.height;
+                this.predators.push(new Predator(x, y));
+                this.updateStats();
+            },
+
+            clearAll() {
+                this.fishes = [];
+                this.predators = [];
+                this.updateStats();
+            },
+
+            updateStats() {
+                document.getElementById('stat-fish').innerText = this.fishes.length;
+                document.getElementById('stat-predators').innerText = this.predators.length;
+            },
+
+            /**
+             * Main loop for whole simulation
+            */
+            loop() {
+                const w = this.canvas.width;
+                const h = this.canvas.height;
+
+                this.ctx.clearRect(0, 0, w, h);
+
+                for (let f of this.fishes) {
+                    f.flock(this.fishes, this.predators);
+                    f.update(w, h);
+                }
+
+                for (let p of this.predators) {
+                    p.hunt(this.fishes);
+                    p.update(w, h);
+                }
+
+                let originalLen = this.fishes.length;
+                this.fishes = this.fishes.filter(f => !f.dead);
+                if (this.fishes.length !== originalLen) {
+                    this.updateStats();
+                }
+
+                // Render Fish
+                for (let f of this.fishes) {
+                    let angle = Math.atan2(f.vel.y, f.vel.x);
+
+                    if (State.presentationMode) {
+                        this.ctx.fillStyle = '#000000'; // black
+                    } else {
+                        // Color shifts based on panic state
+                        if (f.isPanicking) {
+                            this.ctx.fillStyle = '#fde047'; // panic yellow
+                        } else {
+                            this.ctx.fillStyle = '#38bdf8'; // chill light blue
+                        }
+                    }
+
+                    this.ctx.save();
+                    this.ctx.translate(f.pos.x, f.pos.y);
+                    this.ctx.rotate(angle);
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(f.r * 2.5, 0); // elongated nose
+                    this.ctx.lineTo(-f.r, f.r * 1.2); // wider base
+                    this.ctx.lineTo(-f.r * 0.5, 0); // tail indent
+                    this.ctx.lineTo(-f.r, -f.r * 1.2);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    this.ctx.restore();
+                }
+
+                // Render Predators
+                for (let p of this.predators) {
+                    // Draw crosshair for agglomerative cluster targeting
+                    if (State.targetClusters && p.currentTargetPos && !State.presentationMode) {
+                        this.ctx.strokeStyle = 'rgba(239, 68, 68, 0.5)';
+                        this.ctx.lineWidth = 1.5;
+                        this.ctx.beginPath();
+                        this.ctx.arc(p.currentTargetPos.x, p.currentTargetPos.y, 8, 0, Math.PI * 2);
+                        this.ctx.moveTo(p.currentTargetPos.x - 12, p.currentTargetPos.y);
+                        this.ctx.lineTo(p.currentTargetPos.x + 12, p.currentTargetPos.y);
+                        this.ctx.moveTo(p.currentTargetPos.x, p.currentTargetPos.y - 12);
+                        this.ctx.lineTo(p.currentTargetPos.x, p.currentTargetPos.y + 12);
+                        this.ctx.stroke();
+
+                        // Draw faint dashed targeting laser
+                        this.ctx.setLineDash([4, 4]);
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(p.pos.x, p.pos.y);
+                        this.ctx.lineTo(p.currentTargetPos.x, p.currentTargetPos.y);
+                        this.ctx.stroke();
+                        this.ctx.setLineDash([]);
+                    }
+
+                    if (State.presentationMode) {
+                        this.ctx.fillStyle = '#808080'; // grey
+                    } else {
+                        this.ctx.fillStyle = '#ef4444'; // red
+                    }
+
+                    let angle = Math.atan2(p.vel.y, p.vel.x);
+                    this.ctx.save();
+                    this.ctx.translate(p.pos.x, p.pos.y);
+                    this.ctx.rotate(angle);
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(p.r * 3, 0);
+                    this.ctx.lineTo(-p.r * 1.5, p.r * 1.5);
+                    this.ctx.lineTo(-p.r * 0.5, 0);
+                    this.ctx.lineTo(-p.r * 1.5, -p.r * 1.5);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                    this.ctx.restore();
+                }
+
+                this.animFrame = requestAnimationFrame(() => this.loop());
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            App.init();
+        });
+    </script>
+</body>
+
+</html>

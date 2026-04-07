@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fish Sim (Lean)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { margin: 0; padding: 0; background: #0f172a; color: #cbd5e1; font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        .navbar { background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid #1e293b; z-index: 10; padding: 0.5rem 1.5rem; }
+        .navbar-brand { font-weight: 700; color: #f8fafc; letter-spacing: 0.5px; display: flex; align-items: center; gap: 0.5rem; }
+        .brand-icon { color: #3b82f6; font-size: 1.25rem; }
+        .main-container { display: flex; flex: 1; height: calc(100vh - 56px); }
+        .sidebar { width: 320px; background: #0f172a; border-right: 1px solid #1e293b; padding: 1.5rem 1rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1.5rem; }
+        .canvas-area { flex: 1; position: relative; background: #1e293b; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+        canvas { background: linear-gradient(180deg, #020617 0%, #0f172a 100%); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); cursor: crosshair; outline: none; }
+        
+        .section-header { font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: #64748b; margin-bottom: 0.75rem; letter-spacing: 1px; border-bottom: 1px solid #1e293b; padding-bottom: 0.25rem; }
+        .stat-val { font-size: 1.25rem; font-weight: 700; line-height: 1; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        .form-label { font-size: 0.8rem; color: #94a3b8; display: flex; justify-content: space-between; margin-bottom: 0.1rem; }
+        .form-range { height: 1.2rem; }
+        .form-switch .form-check-input { width: 2.5em; height: 1.25em; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <div class="navbar-brand">
+        <i class="bi bi-water brand-icon"></i> Fish Sim <span class="badge bg-secondary ms-2 text-uppercase fs-6">Lean</span>
+    </div>
+</nav>
+
+<div class="main-container">
+    <div class="sidebar">
+        <div>
+            <div class="section-header">Simulation State</div>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <div class="stat-val text-info" id="stat-fish">0</div>
+                    <div class="small text-muted text-uppercase" style="font-size:0.65rem">Fish</div>
+                </div>
+                <div>
+                    <div class="stat-val text-danger" id="stat-predators">0</div>
+                    <div class="small text-muted text-uppercase" style="font-size:0.65rem">Predators</div>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-info flex-fill" onclick="App.spawnFish(50)"><i class="bi bi-plus-lg"></i> 50 Fish</button>
+                <button class="btn btn-sm btn-outline-danger flex-fill" onclick="App.spawnPredator()"><i class="bi bi-plus-lg"></i> Predator</button>
+            </div>
+            <div class="d-flex gap-2 mt-2">
+                <button class="btn btn-sm btn-secondary flex-fill" onclick="App.clearAll()"><i class="bi bi-trash"></i> Clear All</button>
+            </div>
+        </div>
+
+        <div>
+            <div class="section-header">Controls</div>
+            <div class="form-check form-switch mb-3 d-flex align-items-center gap-2">
+                <input class="form-check-input" type="checkbox" role="switch" id="inp-eating" checked onchange="App.toggleEating()">
+                <label class="form-check-label mb-0 pt-1" for="inp-eating" style="font-size:0.875rem">Predators Eat Fish</label>
+            </div>
+        </div>
+
+        <div>
+            <div class="section-header">Flocking Weights</div>
+            
+            <div class="mb-3">
+                <label class="form-label"><span>Separation</span> <span id="lbl-sep">1.5</span></label>
+                <input type="range" class="form-range" id="inp-sep" min="0" max="5" step="0.1" value="1.5" oninput="State.wSep=parseFloat(this.value); document.getElementById('lbl-sep').innerText=this.value;">
+                <div class="small text-muted" style="font-size: 0.65rem">Avoid crowding</div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label"><span>Alignment</span> <span id="lbl-ali">1.0</span></label>
+                <input type="range" class="form-range" id="inp-ali" min="0" max="5" step="0.1" value="1.0" oninput="State.wAli=parseFloat(this.value); document.getElementById('lbl-ali').innerText=this.value;">
+                <div class="small text-muted" style="font-size: 0.65rem">Match direction</div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label"><span>Cohesion</span> <span id="lbl-coh">1.0</span></label>
+                <input type="range" class="form-range" id="inp-coh" min="0" max="5" step="0.1" value="1.0" oninput="State.wCoh=parseFloat(this.value); document.getElementById('lbl-coh').innerText=this.value;">
+                <div class="small text-muted" style="font-size: 0.65rem">Stick together</div>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label text-danger"><span>Predator Avoidance</span> <span id="lbl-pred">3.0</span></label>
+                <input type="range" class="form-range" id="inp-pred" min="0" max="10" step="0.1" value="3.0" oninput="State.wPred=parseFloat(this.value); document.getElementById('lbl-pred').innerText=this.value;">
+                <div class="small text-muted" style="font-size: 0.65rem">Escape repulsive force</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="canvas-area" id="canvas-wrapper">
+        <canvas id="sim-canvas"></canvas>
+    </div>
+</div>
+
+<script>
+/**
+ * Vector Math Utility
+ */
+class Vec2 {
+    constructor(x, y) { this.x = x; this.y = y; }
+    add(v) { return new Vec2(this.x + v.x, this.y + v.y); }
+    sub(v) { return new Vec2(this.x - v.x, this.y - v.y); }
+    mult(n) { return new Vec2(this.x * n, this.y * n); }
+    div(n) { return new Vec2(this.x / n, this.y / n); }
+    mag() { return Math.hypot(this.x, this.y); }
+    magSq() { return this.x * this.x + this.y * this.y; }
+    normalize() { const m = this.mag(); return m === 0 ? new Vec2(0,0) : this.div(m); }
+    limit(max) { if (this.magSq() > max * max) { return this.normalize().mult(max); } return this; }
+    dist(v) { return this.sub(v).mag(); }
+    copy() { return new Vec2(this.x, this.y); }
+}
+
+const State = {
+    wSep: 1.5,
+    wAli: 1.0,
+    wCoh: 1.0,
+    wPred: 3.0,
+    eatingEnabled: true
+};
+
+class Fish {
+    constructor(x, y) {
+        this.pos = new Vec2(x, y);
+        this.vel = new Vec2(Math.random()-0.5, Math.random()-0.5).normalize().mult(2);
+        this.acc = new Vec2(0, 0);
+        this.maxSpeed = 3;
+        this.maxForce = 0.05;
+        this.r = 3; // drawing radius
+        this.dead = false;
+        
+        // Radii configuration
+        this.perceptionRadius = 50;
+        this.separationRadius = 25;
+        this.predatorRadius = 100;
+    }
+
+    applyForce(f) {
+        this.acc = this.acc.add(f);
+    }
+
+    flock(fishes, predators) {
+        let sep = this.separate(fishes);
+        let ali = this.align(fishes);
+        let coh = this.cohesion(fishes);
+        let flee = this.flee(predators);
+
+        sep = sep.mult(State.wSep);
+        ali = ali.mult(State.wAli);
+        coh = coh.mult(State.wCoh);
+        flee = flee.mult(State.wPred);
+
+        this.applyForce(sep);
+        this.applyForce(ali);
+        this.applyForce(coh);
+        this.applyForce(flee);
+    }
+
+    seek(target) {
+        let desired = target.sub(this.pos);
+        desired = desired.normalize().mult(this.maxSpeed);
+        let steer = desired.sub(this.vel);
+        return steer.limit(this.maxForce);
+    }
+
+    flee(predators) {
+        let steer = new Vec2(0, 0);
+        let count = 0;
+        for (let p of predators) {
+            let d = this.pos.dist(p.pos);
+            if (d < this.predatorRadius) {
+                let diff = this.pos.sub(p.pos);
+                if(diff.magSq() === 0) diff = new Vec2(Math.random()-0.5, Math.random()-0.5);
+                diff = diff.normalize().div(d); // Stronger as it gets closer
+                steer = steer.add(diff);
+                count++;
+            }
+        }
+        if (count > 0) {
+            steer = steer.div(count);
+            if (steer.magSq() > 0) {
+                steer = steer.normalize().mult(this.maxSpeed).sub(this.vel).limit(this.maxForce * 3); // Escaping allows higher force limit
+            }
+        }
+        return steer;
+    }
+
+    separate(fishes) {
+        let steer = new Vec2(0, 0);
+        let count = 0;
+        for (let other of fishes) {
+            if (other === this || other.dead) continue;
+            let d = this.pos.dist(other.pos);
+            if (d > 0 && d < this.separationRadius) {
+                let diff = this.pos.sub(other.pos).normalize().div(d);
+                steer = steer.add(diff);
+                count++;
+            }
+        }
+        if (count > 0) {
+            steer = steer.div(count);
+            if (steer.magSq() > 0) {
+                steer = steer.normalize().mult(this.maxSpeed).sub(this.vel).limit(this.maxForce);
+            }
+        }
+        return steer;
+    }
+
+    align(fishes) {
+        let sum = new Vec2(0, 0);
+        let count = 0;
+        for (let other of fishes) {
+            if (other === this || other.dead) continue;
+            let d = this.pos.dist(other.pos);
+            if (d > 0 && d < this.perceptionRadius) {
+                sum = sum.add(other.vel);
+                count++;
+            }
+        }
+        if (count > 0) {
+            sum = sum.div(count).normalize().mult(this.maxSpeed);
+            return sum.sub(this.vel).limit(this.maxForce);
+        }
+        return new Vec2(0, 0);
+    }
+
+    cohesion(fishes) {
+        let sum = new Vec2(0, 0);
+        let count = 0;
+        for (let other of fishes) {
+            if (other === this || other.dead) continue;
+            let d = this.pos.dist(other.pos);
+            if (d > 0 && d < this.perceptionRadius) {
+                sum = sum.add(other.pos);
+                count++;
+            }
+        }
+        if (count > 0) {
+            sum = sum.div(count);
+            return this.seek(sum);
+        }
+        return new Vec2(0, 0);
+    }
+
+    update(w, h) {
+        this.vel = this.vel.add(this.acc);
+        this.vel = this.vel.limit(this.maxSpeed);
+        this.pos = this.pos.add(this.vel);
+        this.acc = new Vec2(0, 0);
+
+        // Toroidal boundaries (wrap around)
+        if (this.pos.x < -this.r) this.pos.x = w + this.r;
+        if (this.pos.y < -this.r) this.pos.y = h + this.r;
+        if (this.pos.x > w + this.r) this.pos.x = -this.r;
+        if (this.pos.y > h + this.r) this.pos.y = -this.r;
+    }
+}
+
+class Predator {
+    constructor(x, y) {
+        this.pos = new Vec2(x, y);
+        this.vel = new Vec2(Math.random()-0.5, Math.random()-0.5).normalize().mult(2.5); // Slightly slower than evading fish on average, but persistent
+        this.acc = new Vec2(0, 0);
+        this.maxSpeed = 2.8;
+        this.maxForce = 0.08;
+        this.perceptionCircle = 150;
+        this.r = 8;
+    }
+    
+    applyForce(f) { this.acc = this.acc.add(f); }
+
+    hunt(fishes) {
+        // Find closest fish
+        let closest = null;
+        let minDist = this.perceptionCircle;
+        
+        for (let f of fishes) {
+            if (f.dead) continue;
+            let d = this.pos.dist(f.pos);
+            if (d < minDist) {
+                minDist = d;
+                closest = f;
+            }
+        }
+        
+        if (closest) {
+            // Seek closest
+            let desired = closest.pos.sub(this.pos).normalize().mult(this.maxSpeed);
+            let steer = desired.sub(this.vel).limit(this.maxForce);
+            this.applyForce(steer);
+            
+            // Eat logic
+            if (State.eatingEnabled && minDist < this.r + closest.r) {
+                closest.dead = true;
+            }
+        } else {
+            // Idle wander
+            if (Math.random() < 0.1) {
+                let wander = new Vec2(Math.random()-0.5, Math.random()-0.5).mult(this.maxForce * 0.5);
+                this.applyForce(wander);
+            }
+        }
+    }
+
+    update(w, h) {
+        this.vel = this.vel.add(this.acc);
+        this.vel = this.vel.limit(this.maxSpeed);
+        this.pos = this.pos.add(this.vel);
+        this.acc = new Vec2(0, 0);
+
+        if (this.pos.x < -this.r) this.pos.x = w + this.r;
+        if (this.pos.y < -this.r) this.pos.y = h + this.r;
+        if (this.pos.x > w + this.r) this.pos.x = -this.r;
+        if (this.pos.y > h + this.r) this.pos.y = -this.r;
+    }
+}
+
+const App = {
+    canvas: document.getElementById('sim-canvas'),
+    ctx: document.getElementById('sim-canvas').getContext('2d'),
+    fishes: [],
+    predators: [],
+    animFrame: null,
+
+    init() {
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        this.spawnFish(150);
+        this.loop();
+    },
+
+    resize() {
+        const wrap = document.getElementById('canvas-wrapper');
+        this.canvas.width = wrap.clientWidth;
+        this.canvas.height = wrap.clientHeight;
+    },
+
+    spawnFish(n) {
+        for(let i=0; i<n; i++) {
+            let x = Math.random() * this.canvas.width;
+            let y = Math.random() * this.canvas.height;
+            this.fishes.push(new Fish(x, y));
+        }
+        this.updateStats();
+    },
+    
+    spawnPredator() {
+        let x = Math.random() * this.canvas.width;
+        let y = Math.random() * this.canvas.height;
+        this.predators.push(new Predator(x, y));
+        this.updateStats();
+    },
+    
+    clearAll() {
+        this.fishes = [];
+        this.predators = [];
+        this.updateStats();
+    },
+    
+    toggleEating() {
+        State.eatingEnabled = document.getElementById('inp-eating').checked;
+    },
+
+    updateStats() {
+        document.getElementById('stat-fish').innerText = this.fishes.length;
+        document.getElementById('stat-predators').innerText = this.predators.length;
+    },
+
+    loop() {
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        
+        this.ctx.clearRect(0, 0, w, h);
+
+        // Flocking and hunting logic
+        for (let f of this.fishes) {
+            f.flock(this.fishes, this.predators);
+            f.update(w, h);
+        }
+        
+        for (let p of this.predators) {
+            p.hunt(this.fishes);
+            p.update(w, h);
+        }
+        
+        // Remove dead fish
+        let originalLen = this.fishes.length;
+        this.fishes = this.fishes.filter(f => !f.dead);
+        if (this.fishes.length !== originalLen) {
+            this.updateStats();
+        }
+
+        // Render
+        const PI2 = Math.PI * 2;
+        
+        // Draw Fish
+        this.ctx.fillStyle = '#38bdf8'; // light blue
+        for (let f of this.fishes) {
+            let angle = Math.atan2(f.vel.y, f.vel.x);
+            this.ctx.save();
+            this.ctx.translate(f.pos.x, f.pos.y);
+            this.ctx.rotate(angle);
+            this.ctx.beginPath();
+            this.ctx.moveTo(f.r * 2, 0);
+            this.ctx.lineTo(-f.r, f.r);
+            this.ctx.lineTo(-f.r, -f.r);
+            this.ctx.closePath();
+            this.ctx.fill();
+            this.ctx.restore();
+        }
+
+        // Draw Predators
+        this.ctx.fillStyle = '#ef4444'; // red
+        for (let p of this.predators) {
+            let angle = Math.atan2(p.vel.y, p.vel.x);
+            this.ctx.save();
+            this.ctx.translate(p.pos.x, p.pos.y);
+            this.ctx.rotate(angle);
+            // Draw a slightly meaner shape
+            this.ctx.beginPath();
+            this.ctx.moveTo(p.r * 2.5, 0);
+            this.ctx.lineTo(-p.r * 1.5, p.r * 1.5);
+            this.ctx.lineTo(-p.r * 0.5, 0);
+            this.ctx.lineTo(-p.r * 1.5, -p.r * 1.5);
+            this.ctx.closePath();
+            this.ctx.fill();
+            this.ctx.restore();
+        }
+
+        this.animFrame = requestAnimationFrame(() => this.loop());
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    App.init();
+});
+</script>
+</body>
+</html>

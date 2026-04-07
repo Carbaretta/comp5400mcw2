@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fire Evacuation Sim</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0f172a;
+            color: #cbd5e1;
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .navbar {
+            background: rgba(15, 23, 42, 0.95);
+            border-bottom: 1px solid #1e293b;
+            z-index: 10;
+            padding: 0.5rem 1.5rem;
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            color: #f8fafc;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .brand-icon {
+            color: #ef4444;
+            font-size: 1.25rem;
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 56px);
+        }
+
+        .sidebar {
+            width: 280px;
+            background: #0f172a;
+            border-right: 1px solid #1e293b;
+            padding: 1.5rem 1rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            background: #1e293b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        canvas {
+            background-color: #f8fafc;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            cursor: crosshair;
+            outline: none;
+        }
+
+        .section-header {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #64748b;
+            margin-bottom: 0.75rem;
+            letter-spacing: 1px;
+        }
+
+        .tool-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: #94a3b8;
+            text-align: left;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+            margin-bottom: 0.25rem;
+        }
+
+        .tool-btn:hover {
+            background: #1e293b;
+            color: #e2e8f0;
+        }
+
+        .tool-btn.active {
+            background: #3b82f6;
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        }
+
+        .action-btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-weight: 500;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .stat-box {
+            background: #1e293b;
+            border-radius: 6px;
+            padding: 0.75rem;
+            text-align: center;
+            border: 1px solid #334155;
+        }
+
+        .stat-val {
+            font-size: 1.25rem;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-lbl {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: #94a3b8;
+            letter-spacing: 0.5px;
+        }
+
+        .form-range::-webkit-slider-thumb {
+            background: #3b82f6;
+        }
+
+        .form-label {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-bottom: 0.25rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
+        }
+
+        /* Floating notification */
+        #toast-container {
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+            z-index: 50;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <i class="bi bi-fire brand-icon"></i> EvacSim Pro
+        </div>
+        <div class="d-flex gap-2">
+            <button id="btn-save" class="btn btn-sm btn-outline-light d-flex align-items-center gap-2"><i
+                    class="bi bi-download"></i> Save</button>
+            <label for="inp-load"
+                class="btn btn-sm btn-outline-light d-flex align-items-center gap-2 mb-0 cursor-pointer"><i
+                    class="bi bi-upload"></i> Load</label>
+            <input type="file" id="inp-load" accept=".json" class="d-none">
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div>
+                <div class="section-header">Live Statistics</div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-val text-info" id="stat-total">0</div>
+                        <div class="stat-lbl">Total</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-val text-success" id="stat-safe">0</div>
+                        <div class="stat-lbl">Safe</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-val text-danger" id="stat-dead">0</div>
+                        <div class="stat-lbl">Casualties</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-val text-warning" id="stat-time">0.0s</div>
+                        <div class="stat-lbl">Time</div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <div class="section-header">Simulation Controls</div>
+                <div class="d-flex gap-2 mb-3">
+                    <button id="btn-play" class="btn btn-success action-btn"><i class="bi bi-play-fill"></i>
+                        Play</button>
+                    <button id="btn-pause" class="btn btn-secondary action-btn d-none"><i class="bi bi-pause-fill"></i>
+                        Pause</button>
+                    <button id="btn-reset" class="btn btn-danger action-btn"><i
+                            class="bi bi-arrow-counterclockwise"></i> Reset</button>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label"><span>Sim Speed</span><span id="lbl-speed">1.0x</span></label>
+                    <input type="range" class="form-range" id="inp-speed" min="0.5" max="5" step="0.5" value="1">
+                </div>
+                <div>
+                    <label class="form-label"><span>Fire Spread Rate</span><span id="lbl-fire">1.0</span></label>
+                    <input type="range" class="form-range" id="inp-fire" min="0" max="5" step="0.1" value="1">
+                </div>
+            </div>
+
+            <div>
+                <div class="section-header">Editor Tools</div>
+                <button class="tool-btn active" data-tool="select"><i class="bi bi-cursor"></i> Select / Move</button>
+                <button class="tool-btn" data-tool="wall"><i class="bi bi-slash-lg"></i> Draw Wall</button>
+                <button class="tool-btn" data-tool="obstacle"><i class="bi bi-square"></i> Obstacle</button>
+                <button class="tool-btn" data-tool="safezone"><i class="bi bi-shield-check text-primary"></i> Safe
+                    Zone</button>
+                <button class="tool-btn" data-tool="exit"><i class="bi bi-door-open text-success"></i> Place
+                    Exit</button>
+                <button class="tool-btn" data-tool="fire"><i class="bi bi-fire text-danger"></i> Place Fire</button>
+                <button class="tool-btn" data-tool="agent"><i class="bi bi-person text-info"></i> Place Person</button>
+                <button class="tool-btn" data-tool="erase"><i class="bi bi-eraser text-warning"></i> Erase</button>
+
+                <hr class="border-secondary my-3">
+                <button id="btn-random-agents"
+                    class="btn btn-sm btn-outline-info w-100 d-flex align-items-center justify-content-center gap-2"><i
+                        class="bi bi-people"></i> Spawn 50 Random</button>
+                <button id="btn-clear-all"
+                    class="btn btn-sm btn-outline-danger w-100 d-flex align-items-center justify-content-center gap-2 mt-2"><i
+                        class="bi bi-trash"></i> Clear All</button>
+            </div>
+        </div>
+
+        <div class="canvas-area" id="canvas-wrapper">
+            <canvas id="sim-canvas"></canvas>
+            <div id="toast-container"></div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Vector Math Utility
+         */
+        class Vec2 {
+            constructor(x, y) { this.x = x; this.y = y; }
+            add(v) { return new Vec2(this.x + v.x, this.y + v.y); }
+            sub(v) { return new Vec2(this.x - v.x, this.y - v.y); }
+            mult(n) { return new Vec2(this.x * n, this.y * n); }
+            div(n) { return new Vec2(this.x / n, this.y / n); }
+            mag() { return Math.hypot(this.x, this.y); }
+            magSq() { return this.x * this.x + this.y * this.y; }
+            normalize() { const m = this.mag(); return m === 0 ? new Vec2(0, 0) : this.div(m); }
+            limit(max) { if (this.magSq() > max * max) { return this.normalize().mult(max); } return this; }
+            dist(v) { return this.sub(v).mag(); }
+            copy() { return new Vec2(this.x, this.y); }
+            static distanceToSegment(p, v, w) {
+                const l2 = v.dist(w) ** 2;
+                if (l2 === 0) return p.dist(v);
+                let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+                t = Math.max(0, Math.min(1, t));
+                return p.dist(new Vec2(v.x + t * (w.x - v.x), v.y + t * (w.y - v.y)));
+            }
+            static closestPointOnSegment(p, v, w) {
+                const l2 = v.dist(w) ** 2;
+                if (l2 === 0) return v.copy();
+                let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+                t = Math.max(0, Math.min(1, t));
+                return new Vec2(v.x + t * (w.x - v.x), v.y + t * (w.y - v.y));
+            }
+            static lineSegmentsIntersect(p1, p2, p3, p4) {
+                let det = (p2.x - p1.x) * (p4.y - p3.y) - (p4.x - p3.x) * (p2.y - p1.y);
+                if (det === 0) return false;
+                let lambda = ((p4.y - p3.y) * (p4.x - p1.x) + (p3.x - p4.x) * (p4.y - p1.y)) / det;
+                let gamma = ((p1.y - p2.y) * (p4.x - p1.x) + (p2.x - p1.x) * (p4.y - p1.y)) / det;
+                return (0 < lambda && lambda < 1) && (0 < gamma && gamma < 1);
+            }
+            static segmentIntersectsRect(p1, p2, r) {
+                let tl = new Vec2(r.x, r.y), tr = new Vec2(r.x + r.w, r.y);
+                let br = new Vec2(r.x + r.w, r.y + r.h), bl = new Vec2(r.x, r.y + r.h);
+                if (Vec2.lineSegmentsIntersect(p1, p2, tl, tr)) return true;
+                if (Vec2.lineSegmentsIntersect(p1, p2, tr, br)) return true;
+                if (Vec2.lineSegmentsIntersect(p1, p2, br, bl)) return true;
+                if (Vec2.lineSegmentsIntersect(p1, p2, bl, tl)) return true;
+                // Check if endpoints are inside
+                if (p1.x >= r.x && p1.x <= r.x + r.w && p1.y >= r.y && p1.y <= r.y + r.h) return true;
+                if (p2.x >= r.x && p2.x <= r.x + r.w && p2.y >= r.y && p2.y <= r.y + r.h) return true;
+                return false;
+            }
+        }
+
+        /**
+         * Constants & Settings
+         */
+        const C = {
+            FPS: 60,
+            DT: 1 / 60,
+            AGENT_RADIUS: 6,
+            MAX_SPEED: 80, // px per second
+            MAX_FORCE: 200,
+            VIEW_RADIUS: 100, // Agent perception radius
+            STATE: { IDLE: 0, EVACUATING: 1, EXITED: 4, SAFE: 2, DEAD: 3 }
+        };
+
+        /**
+         * Environment Geometry
+         */
+        class State {
+            constructor() { this.reset(); }
+            reset() {
+                this.walls = []; // {v, w}
+                this.obstacles = []; // {x, y, w, h}
+                this.exits = []; // {x, y, w, h}
+                this.safeZones = []; // {x, y, w, h}
+                this.fires = []; // {x, y, r}
+                this.agents = []; // Agent[]
+
+                // initial fires configuration to reset to
+                this.initialFires = [];
+                this.initialAgents = [];
+            }
+            serialize() {
+                return {
+                    walls: this.walls.map(w => ({ vx: w.v.x, vy: w.v.y, wx: w.w.x, wy: w.w.y })),
+                    obstacles: this.obstacles,
+                    exits: this.exits,
+                    safeZones: this.safeZones,
+                    fires: this.initialFires.length > 0 ? this.initialFires : this.fires.map(f => ({ x: f.x, y: f.y, r: 10 })),
+                    agents: this.initialAgents.length > 0 ? this.initialAgents : this.agents.map(a => ({ x: a.pos.x, y: a.pos.y }))
+                };
+            }
+            deserialize(data) {
+                this.reset();
+                if (data.walls) this.walls = data.walls.map(w => ({ v: new Vec2(w.vx, w.vy), w: new Vec2(w.wx, w.wy) }));
+                if (data.obstacles) this.obstacles = data.obstacles;
+                if (data.exits) this.exits = data.exits;
+                if (data.safeZones) this.safeZones = data.safeZones;
+                if (data.fires) {
+                    this.initialFires = data.fires;
+                    this.fires = data.fires.map(f => ({ x: f.x, y: f.y, r: f.r || 10 }));
+                }
+                if (data.agents) {
+                    this.initialAgents = data.agents;
+                    data.agents.forEach(a => this.agents.push(new Agent(a.x, a.y)));
+                }
+            }
+            snapshotInitial() {
+                this.initialFires = this.fires.map(f => ({ x: f.x, y: f.y, r: 10 }));
+                this.initialAgents = this.agents.map(a => ({ x: a.pos.x, y: a.pos.y }));
+            }
+            restoreInitial() {
+                this.fires = this.initialFires.map(f => ({ x: f.x, y: f.y, r: f.r || 10 }));
+                this.agents = this.initialAgents.map(a => new Agent(a.x, a.y));
+            }
+        }
+
+        /**
+         * Agent Entity with Steering Behaviors
+         */
+        class Agent {
+            constructor(x, y) {
+                this.pos = new Vec2(x, y);
+                this.vel = new Vec2(Math.random() - 0.5, Math.random() - 0.5).normalize().mult(C.MAX_SPEED * 0.2);
+                this.acc = new Vec2(0, 0);
+                this.state = C.STATE.IDLE;
+                this.color = `hsl(${Math.random() * 360}, 60%, 50%)`;
+                this.mass = 1 + Math.random() * 0.2; // slight variation
+                this.panicDelayTimer = 0;
+            }
+
+            applyForce(f) {
+                this.acc = this.acc.add(f.div(this.mass));
+            }
+
+            update(dt, simSpeed, env) {
+                if (this.state === C.STATE.SAFE || this.state === C.STATE.DEAD) return;
+
+                // State Transitions
+                if (this.state === C.STATE.IDLE) {
+                    // Check if fire is near to trigger panic
+                    if (env.fires.some(f => this.pos.dist(new Vec2(f.x, f.y)) < f.r + 150)) {
+                        this.state = C.STATE.EVACUATING;
+                    } else {
+                        // Group panic: observe others fleeing
+                        const LOS_RANGE = 200; // Sight range for observing panic
+                        let sawPanic = false;
+                        for (let other of env.agents) {
+                            if (other !== this && other.state === C.STATE.EVACUATING) {
+                                if (this.pos.dist(other.pos) < LOS_RANGE) {
+                                    let hasLos = true;
+                                    // Check wall intersections
+                                    for (let w of env.walls) {
+                                        if (Vec2.lineSegmentsIntersect(this.pos, other.pos, w.v, w.w)) {
+                                            hasLos = false; break;
+                                        }
+                                    }
+                                    // Check obstacle intersections
+                                    if (hasLos) {
+                                        for (let o of env.obstacles) {
+                                            if (Vec2.segmentIntersectsRect(this.pos, other.pos, o)) {
+                                                hasLos = false; break;
+                                            }
+                                        }
+                                    }
+                                    if (hasLos) {
+                                        sawPanic = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (sawPanic) {
+                            this.panicDelayTimer += dt * simSpeed;
+                            if (this.panicDelayTimer >= 0.5) {
+                                this.state = C.STATE.EVACUATING;
+                            }
+                        } else {
+                            this.panicDelayTimer = 0;
+                        }
+                    }
+                }
+
+                // Check conditions
+                if (env.fires.some(f => this.pos.dist(new Vec2(f.x, f.y)) < f.r)) {
+                    this.state = C.STATE.DEAD;
+                    return;
+                }
+
+                if (this.state === C.STATE.EVACUATING && env.exits.some(e => this.pos.x >= e.x && this.pos.x <= e.x + e.w && this.pos.y >= e.y && this.pos.y <= e.y + e.h)) {
+                    if (env.safeZones.length > 0) {
+                        this.state = C.STATE.EXITED;
+                    } else {
+                        this.state = C.STATE.SAFE;
+                        return;
+                    }
+                }
+
+                if (this.state === C.STATE.EXITED && env.safeZones.some(s => this.pos.x >= s.x && this.pos.x <= s.x + s.w && this.pos.y >= s.y && this.pos.y <= s.y + s.h)) {
+                    this.state = C.STATE.SAFE;
+                    return;
+                }
+
+                // Steering logic
+                this.acc = new Vec2(0, 0);
+
+                let forceSep = this.separate(env.agents);
+                let forceWall = this.avoidWalls(env);
+                let forceTarget = new Vec2(0, 0);
+                let forceFire = new Vec2(0, 0);
+
+                if (this.state === C.STATE.EVACUATING) {
+                    forceTarget = this.seekClosestRect(env.exits);
+                    forceFire = this.fleeFires(env.fires);
+                } else if (this.state === C.STATE.EXITED) {
+                    forceTarget = this.seekClosestRect(env.safeZones);
+                    forceFire = this.fleeFires(env.fires);
+                } else {
+                    // Idle wander
+                    forceTarget = new Vec2(Math.random() - 0.5, Math.random() - 0.5).mult(5);
+                }
+
+                // Weighting - local rules balancing
+                forceSep = forceSep.mult(1.5);
+                forceWall = forceWall.mult(3.0);
+                forceTarget = forceTarget.mult(1.0);
+                forceFire = forceFire.mult(2.5);
+
+                this.applyForce(forceSep);
+                this.applyForce(forceWall);
+                this.applyForce(forceTarget);
+                this.applyForce(forceFire);
+
+                // Physics Integration
+                this.vel = this.vel.add(this.acc.mult(dt * simSpeed));
+
+                // Speed cap based on state
+                const spdLimit = (this.state === C.STATE.EVACUATING || this.state === C.STATE.EXITED) ? C.MAX_SPEED : C.MAX_SPEED * 0.3;
+                this.vel = this.vel.limit(spdLimit);
+
+                this.pos = this.pos.add(this.vel.mult(dt * simSpeed));
+
+                // Hard boundary collision
+                this.resolveCollisions(env);
+            }
+
+            seek(target) {
+                let desired = target.sub(this.pos);
+                if (desired.magSq() === 0) return new Vec2(0, 0);
+                desired = desired.normalize().mult(C.MAX_SPEED);
+                return desired.sub(this.vel).limit(C.MAX_FORCE);
+            }
+
+            seekClosestRect(rects) {
+                if (rects.length === 0) return new Vec2(0, 0);
+                let closest = null;
+                let minDist = Infinity;
+                for (let r of rects) {
+                    let center = new Vec2(r.x + r.w / 2, r.y + r.h / 2);
+                    let d = this.pos.dist(center);
+                    if (d < minDist) { minDist = d; closest = center; }
+                }
+                return this.seek(closest);
+            }
+
+            fleeFires(fires) {
+                let steer = new Vec2(0, 0);
+                let count = 0;
+                for (let f of fires) {
+                    let fp = new Vec2(f.x, f.y);
+                    let d = this.pos.dist(fp);
+                    let dangerZone = f.r + 100;
+                    if (d < dangerZone && d > 0) {
+                        let diff = this.pos.sub(fp).normalize().div(d); // Further = weaker
+                        steer = steer.add(diff);
+                        count++;
+                    }
+                }
+                if (count > 0) {
+                    steer = steer.div(count);
+                    if (steer.magSq() > 0) {
+                        steer = steer.normalize().mult(C.MAX_SPEED).sub(this.vel).limit(C.MAX_FORCE);
+                    }
+                }
+                return steer;
+            }
+
+            separate(agents) {
+                let steer = new Vec2(0, 0);
+                let count = 0;
+                const DESIRED_SEPARATION = C.AGENT_RADIUS * 2.5;
+
+                let velDir = this.vel.magSq() > 0 ? this.vel.normalize() : new Vec2(Math.random() - 0.5, Math.random() - 0.5).normalize();
+
+                for (let other of agents) {
+                    if (other === this || other.state === C.STATE.SAFE || other.state === C.STATE.DEAD) continue;
+                    let d = this.pos.dist(other.pos);
+                    if (d > 0 && d < DESIRED_SEPARATION) {
+                        let toOther = other.pos.sub(this.pos);
+                        let toOtherNorm = toOther.normalize();
+
+                        // Are they in front of us?
+                        let inFront = velDir.x * toOtherNorm.x + velDir.y * toOtherNorm.y > 0.3;
+
+                        if (inFront && this.vel.magSq() >= other.vel.magSq() * 0.5) {
+                            // Circumnavigate: push laterally
+                            let lateral = new Vec2(-velDir.y, velDir.x);
+                            if (lateral.x * toOtherNorm.x + lateral.y * toOtherNorm.y > 0) {
+                                lateral = new Vec2(velDir.y, -velDir.x); // Push away from them
+                            }
+                            steer = steer.add(lateral.div(d));
+                            count++;
+                        } else if (d < C.AGENT_RADIUS * 1.5) {
+                            // Small personal space push if too close
+                            steer = steer.add(toOtherNorm.mult(-1 / d));
+                            count++;
+                        }
+                    }
+                }
+                if (count > 0) {
+                    steer = steer.div(count);
+                    if (steer.magSq() > 0) {
+                        steer = steer.normalize().mult(C.MAX_SPEED).sub(this.vel).limit(C.MAX_FORCE);
+                    }
+                }
+                return steer;
+            }
+
+            avoidWalls(env) {
+                let steer = new Vec2(0, 0);
+                let count = 0;
+                const AVOID_DIST = C.AGENT_RADIUS * 1.2;
+
+                let velNorm = this.vel.magSq() > 0 ? this.vel.normalize() : new Vec2(Math.random() - 0.5, Math.random() - 0.5).normalize();
+                let lookaheadLen = Math.max(30, this.vel.mag()); // Dynamic lookahead distance
+                let ahead1 = this.pos.add(velNorm.mult(lookaheadLen));
+                let ahead2 = this.pos.add(velNorm.mult(lookaheadLen * 0.5));
+
+                // Line walls
+                for (let w of env.walls) {
+                    let closest = Vec2.closestPointOnSegment(this.pos, w.v, w.w);
+                    let d = this.pos.dist(closest);
+                    if (d < AVOID_DIST && d > 0) {
+                        let diff = this.pos.sub(closest).normalize().div(d);
+                        steer = steer.add(diff.mult(3)); // Strong immediate priority
+                        count++;
+                    }
+
+                    // Lookahead tests
+                    let c1 = Vec2.closestPointOnSegment(ahead1, w.v, w.w);
+                    let c2 = Vec2.closestPointOnSegment(ahead2, w.v, w.w);
+
+                    if (ahead1.dist(c1) < C.AGENT_RADIUS * 3) {
+                        steer = steer.add(ahead1.sub(c1).normalize());
+                        count++;
+                    }
+                    if (ahead2.dist(c2) < C.AGENT_RADIUS * 3) {
+                        steer = steer.add(ahead2.sub(c2).normalize());
+                        count++;
+                    }
+                }
+
+                // Rect obstacles
+                for (let o of env.obstacles) {
+                    const cx = Math.max(o.x, Math.min(this.pos.x, o.x + o.w));
+                    const cy = Math.max(o.y, Math.min(this.pos.y, o.y + o.h));
+                    const closest = new Vec2(cx, cy);
+                    let d = this.pos.dist(closest);
+                    if (d < AVOID_DIST && d > 0) {
+                        let diff = this.pos.sub(closest).normalize().div(d);
+                        steer = steer.add(diff.mult(3)); // Strong immediate priority
+                        count++;
+                    }
+
+                    // Lookahead tests
+                    const cx1 = Math.max(o.x, Math.min(ahead1.x, o.x + o.w));
+                    const cy1 = Math.max(o.y, Math.min(ahead1.y, o.y + o.h));
+                    const c1 = new Vec2(cx1, cy1);
+
+                    const cx2 = Math.max(o.x, Math.min(ahead2.x, o.x + o.w));
+                    const cy2 = Math.max(o.y, Math.min(ahead2.y, o.y + o.h));
+                    const c2 = new Vec2(cx2, cy2);
+
+                    if (ahead1.dist(c1) < C.AGENT_RADIUS * 3) {
+                        steer = steer.add(ahead1.sub(c1).normalize());
+                        count++;
+                    }
+                    if (ahead2.dist(c2) < C.AGENT_RADIUS * 3) {
+                        steer = steer.add(ahead2.sub(c2).normalize());
+                        count++;
+                    }
+                }
+
+                if (count > 0) {
+                    steer = steer.div(count);
+                    if (steer.magSq() > 0) {
+                        steer = steer.normalize().mult(C.MAX_SPEED).sub(this.vel).limit(C.MAX_FORCE);
+                    }
+                }
+                return steer;
+            }
+
+            resolveCollisions(env) {
+                // Soft bounds mapping to canvas dimensions (done remotely via env context bounds if needed)
+
+                // Rigid wall push out
+                for (let w of env.walls) {
+                    let closest = Vec2.closestPointOnSegment(this.pos, w.v, w.w);
+                    let d = this.pos.dist(closest);
+                    if (d < C.AGENT_RADIUS) {
+                        let p = this.pos.sub(closest).normalize().mult(C.AGENT_RADIUS - d);
+                        if (p.magSq() === 0) p = new Vec2(Math.random() - 0.5, Math.random() - 0.5).normalize().mult(0.1); // prevent zero div lock
+                        this.pos = this.pos.add(p);
+
+                        let normal = p.normalize();
+                        let dot = this.vel.x * normal.x + this.vel.y * normal.y;
+                        if (dot < 0) {
+                            this.vel.x -= dot * normal.x;
+                            this.vel.y -= dot * normal.y;
+                        }
+                    }
+                }
+
+                // Rigid obstacle push out
+                for (let o of env.obstacles) {
+                    const cx = Math.max(o.x, Math.min(this.pos.x, o.x + o.w));
+                    const cy = Math.max(o.y, Math.min(this.pos.y, o.y + o.h));
+                    const closest = new Vec2(cx, cy);
+                    let d = this.pos.dist(closest);
+                    if (d < C.AGENT_RADIUS) {
+                        let diff = this.pos.sub(closest);
+                        if (diff.magSq() === 0) diff = new Vec2(Math.random() - 0.5, Math.random() - 0.5);
+                        let p = diff.normalize().mult(C.AGENT_RADIUS - d);
+                        this.pos = this.pos.add(p);
+
+                        let normal = diff.normalize();
+                        let dot = this.vel.x * normal.x + this.vel.y * normal.y;
+                        if (dot < 0) {
+                            this.vel.x -= dot * normal.x;
+                            this.vel.y -= dot * normal.y;
+                        }
+                    }
+                }
+            }
+        }
+
+        /**
+         * Main Application Logic
+         */
+        const App = {
+            canvas: document.getElementById('sim-canvas'),
+            ctx: document.getElementById('sim-canvas').getContext('2d'),
+            env: new State(),
+
+            // UI State
+            tool: 'select',
+            running: false,
+            simTime: 0,
+            speedMultiplier: 1,
+            fireGrowthRate: 1,
+            lastFrameTime: 0,
+            animFrame: null,
+
+            // Editor State
+            input: { isDown: false, start: new Vec2(0, 0), current: new Vec2(0, 0), target: null },
+
+            init() {
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+                this.bindEvents();
+                this.render(); // initial render
+            },
+
+            resize() {
+                const wrap = document.getElementById('canvas-wrapper');
+                this.canvas.width = wrap.clientWidth - 32;
+                this.canvas.height = wrap.clientHeight - 32;
+                this.render();
+            },
+
+            bindEvents() {
+                // UI
+                document.querySelectorAll('.tool-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                        const target = e.currentTarget;
+                        target.classList.add('active');
+                        this.tool = target.dataset.tool;
+                    });
+                });
+
+                document.getElementById('btn-play').addEventListener('click', () => this.play());
+                document.getElementById('btn-pause').addEventListener('click', () => this.pause());
+                document.getElementById('btn-reset').addEventListener('click', () => this.reset());
+                document.getElementById('btn-clear-all').addEventListener('click', () => this.clearAll());
+                document.getElementById('btn-random-agents').addEventListener('click', () => this.spawnRandomAgents(50));
+
+                document.getElementById('inp-speed').addEventListener('input', (e) => {
+                    this.speedMultiplier = parseFloat(e.target.value);
+                    document.getElementById('lbl-speed').innerText = this.speedMultiplier.toFixed(1) + 'x';
+                });
+
+                document.getElementById('inp-fire').addEventListener('input', (e) => {
+                    this.fireGrowthRate = parseFloat(e.target.value);
+                    document.getElementById('lbl-fire').innerText = this.fireGrowthRate.toFixed(1);
+                });
+
+                document.getElementById('btn-save').addEventListener('click', () => this.saveData());
+                document.getElementById('inp-load').addEventListener('change', (e) => this.loadData(e));
+
+                // Canvas Input Interactivity
+                const getMPos = (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    return new Vec2(e.clientX - rect.left, e.clientY - rect.top);
+                };
+
+                this.canvas.addEventListener('mousedown', (e) => {
+                    if (e.button !== 0) return; // Only left click
+                    this.input.isDown = true;
+                    this.input.start = getMPos(e);
+                    this.input.current = this.input.start;
+
+                    if (this.tool === 'fire') {
+                        this.env.fires.push({ x: this.input.start.x, y: this.input.start.y, r: 10 });
+                    } else if (this.tool === 'agent') {
+                        this.env.agents.push(new Agent(this.input.start.x, this.input.start.y));
+                    } else if (this.tool === 'exit') {
+                        this.env.exits.push({ x: this.input.start.x - 20, y: this.input.start.y - 10, w: 40, h: 20 });
+                    } else if (this.tool === 'erase') {
+                        this.eraseEntity(this.input.start);
+                    } else if (this.tool === 'select') {
+                        this.input.target = this.hitTest(this.input.start);
+                    }
+                    if (!this.running) this.render();
+                });
+
+                this.canvas.addEventListener('mousemove', (e) => {
+                    this.input.current = getMPos(e);
+
+                    if (this.input.isDown && this.tool === 'select' && this.input.target) {
+                        // Dragging logic
+                        const dx = this.input.current.x - this.input.start.x;
+                        const dy = this.input.current.y - this.input.start.y;
+                        const tgt = this.input.target;
+
+                        if (tgt.type === 'obs' || tgt.type === 'exit' || tgt.type === 'safezone') {
+                            tgt.ref.x += dx; tgt.ref.y += dy;
+                        } else if (tgt.type === 'wall') {
+                            tgt.ref.v.x += dx; tgt.ref.v.y += dy;
+                            tgt.ref.w.x += dx; tgt.ref.w.y += dy;
+                        }
+
+                        this.input.start = this.input.current;
+                    }
+                    if (!this.running) this.render();
+                });
+
+                this.canvas.addEventListener('mouseup', (e) => {
+                    if (!this.input.isDown) return;
+                    this.input.isDown = false;
+
+                    if (this.tool === 'wall') {
+                        if (this.input.start.dist(this.input.current) > 10) {
+                            this.env.walls.push({ v: this.input.start.copy(), w: this.input.current.copy() });
+                        }
+                    } else if (this.tool === 'obstacle' || this.tool === 'safezone') {
+                        const rx = Math.min(this.input.start.x, this.input.current.x);
+                        const ry = Math.min(this.input.start.y, this.input.current.y);
+                        const rw = Math.abs(this.input.start.x - this.input.current.x);
+                        const rh = Math.abs(this.input.start.y - this.input.current.y);
+                        if (rw > 10 && rh > 10) {
+                            if (this.tool === 'obstacle') this.env.obstacles.push({ x: rx, y: ry, w: rw, h: rh });
+                            else this.env.safeZones.push({ x: rx, y: ry, w: rw, h: rh });
+                        }
+                    }
+                    this.input.target = null;
+                    if (!this.running) this.render();
+                });
+            },
+
+            hitTest(p) {
+                // Obstacles
+                for (let o of this.env.obstacles) {
+                    if (p.x >= o.x && p.x <= o.x + o.w && p.y >= o.y && p.y <= o.y + o.h) return { type: 'obs', ref: o };
+                }
+                // Exits
+                for (let e of this.env.exits) {
+                    if (p.x >= e.x && p.x <= e.x + e.w && p.y >= e.y && p.y <= e.y + e.h) return { type: 'exit', ref: e };
+                }
+                // Safe Zones
+                for (let s of this.env.safeZones) {
+                    if (p.x >= s.x && p.x <= s.x + s.w && p.y >= s.y && p.y <= s.y + s.h) return { type: 'safezone', ref: s };
+                }
+                // Walls
+                for (let w of this.env.walls) {
+                    if (Vec2.distanceToSegment(p, w.v, w.w) < 10) return { type: 'wall', ref: w };
+                }
+                return null;
+            },
+
+            eraseEntity(p) {
+                // Fire
+                const fIdx = this.env.fires.findIndex(f => new Vec2(f.x, f.y).dist(p) < f.r);
+                if (fIdx !== -1) { this.env.fires.splice(fIdx, 1); return; }
+
+                // Agent
+                const aIdx = this.env.agents.findIndex(a => a.pos.dist(p) < C.AGENT_RADIUS);
+                if (aIdx !== -1) { this.env.agents.splice(aIdx, 1); return; }
+
+                // Exits, Obstacles, Walls
+                const hit = this.hitTest(p);
+                if (hit) {
+                    if (hit.type === 'obs') this.env.obstacles = this.env.obstacles.filter(o => o !== hit.ref);
+                    if (hit.type === 'exit') this.env.exits = this.env.exits.filter(o => o !== hit.ref);
+                    if (hit.type === 'wall') this.env.walls = this.env.walls.filter(o => o !== hit.ref);
+                    if (hit.type === 'safezone') this.env.safeZones = this.env.safeZones.filter(o => o !== hit.ref);
+                }
+            },
+
+            spawnRandomAgents(count) {
+                for (let i = 0; i < count; i++) {
+                    const x = Math.random() * this.canvas.width;
+                    const y = Math.random() * this.canvas.height;
+                    // Basic check if inside obstacle
+                    const inside = this.env.obstacles.some(o => x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h);
+                    if (!inside) {
+                        this.env.agents.push(new Agent(x, y));
+                    }
+                }
+                if (!this.running) this.render();
+            },
+
+            clearAll() {
+                this.pause();
+                this.env.reset();
+                this.simTime = 0;
+                this.updateStats();
+                this.render();
+            },
+
+            play() {
+                if (this.running) return;
+                this.running = true;
+                document.getElementById('btn-play').classList.add('d-none');
+                document.getElementById('btn-pause').classList.remove('d-none');
+
+                if (this.simTime === 0) {
+                    this.env.snapshotInitial();
+                }
+
+                this.lastFrameTime = performance.now();
+                this.animFrame = requestAnimationFrame((ts) => this.loop(ts));
+            },
+
+            pause() {
+                this.running = false;
+                document.getElementById('btn-play').classList.remove('d-none');
+                document.getElementById('btn-pause').classList.add('d-none');
+                cancelAnimationFrame(this.animFrame);
+            },
+
+            reset() {
+                this.pause();
+                this.env.restoreInitial();
+                this.simTime = 0;
+                this.updateStats();
+                this.render();
+            },
+
+            loop(timestamp) {
+                if (!this.running) return;
+
+                // Fixed timestep or delta time
+                const ds = (timestamp - this.lastFrameTime) / 1000;
+                this.lastFrameTime = timestamp;
+
+                // Cap dt to prevent huge jumps
+                const dt = Math.min(ds, 0.1);
+
+                this.simTime += dt * this.speedMultiplier;
+
+                // Update Fires
+                const fGrow = this.fireGrowthRate * 10 * dt * this.speedMultiplier;
+                for (let f of this.env.fires) f.r += fGrow;
+
+                // Update Agents
+                // Resolve agent-agent collisions (rigid body push out)
+                for (let i = 0; i < this.env.agents.length; i++) {
+                    for (let j = i + 1; j < this.env.agents.length; j++) {
+                        let a = this.env.agents[i], b = this.env.agents[j];
+                        let d = a.pos.dist(b.pos);
+                        if (d > 0 && d < C.AGENT_RADIUS * 2) {
+                            let overlap = (C.AGENT_RADIUS * 2 - d) / 2;
+                            let dir = a.pos.sub(b.pos).normalize().mult(overlap);
+                            a.pos = a.pos.add(dir);
+                            b.pos = b.pos.sub(dir);
+                        }
+                    }
+                }
+
+                // Apply steering & physics
+                for (let a of this.env.agents) {
+                    // Keep inside bounds
+                    a.pos.x = Math.max(C.AGENT_RADIUS, Math.min(this.canvas.width - C.AGENT_RADIUS, a.pos.x));
+                    a.pos.y = Math.max(C.AGENT_RADIUS, Math.min(this.canvas.height - C.AGENT_RADIUS, a.pos.y));
+                    a.update(dt, this.speedMultiplier, this.env);
+                }
+
+                this.updateStats();
+                this.render();
+                this.animFrame = requestAnimationFrame((ts) => this.loop(ts));
+            },
+
+            updateStats() {
+                const t = this.env.agents.length;
+                const s = this.env.agents.filter(a => a.state === C.STATE.SAFE).length;
+                const d = this.env.agents.filter(a => a.state === C.STATE.DEAD).length;
+
+                document.getElementById('stat-total').innerText = t;
+                document.getElementById('stat-safe').innerText = s;
+                document.getElementById('stat-dead').innerText = d;
+                document.getElementById('stat-time').innerText = this.simTime.toFixed(1) + 's';
+            },
+
+            render() {
+                const ctx = this.ctx;
+                ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Draw Exits
+                for (let e of this.env.exits) {
+                    ctx.fillStyle = '#10b981'; // success
+                    ctx.fillRect(e.x, e.y, e.w, e.h);
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 10px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('EXIT', e.x + e.w / 2, e.y + e.h / 2 + 3);
+                }
+
+                // Draw Safe Zones
+                for (let s of this.env.safeZones) {
+                    ctx.fillStyle = 'rgba(59, 130, 246, 0.3)'; // semi transparent blue
+                    ctx.fillRect(s.x, s.y, s.w, s.h);
+                    ctx.strokeStyle = '#3b82f6';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]);
+                    ctx.strokeRect(s.x, s.y, s.w, s.h);
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = '#60a5fa';
+                    ctx.font = 'bold 10px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('SAFE ZONE', s.x + s.w / 2, s.y + s.h / 2 + 3);
+                }
+
+                // Draw Obstacles
+                ctx.fillStyle = '#475569';
+                for (let o of this.env.obstacles) {
+                    ctx.fillRect(o.x, o.y, o.w, o.h);
+                }
+
+                // Draw Walls
+                ctx.strokeStyle = '#334155';
+                ctx.lineWidth = 4;
+                ctx.lineCap = 'round';
+                for (let w of this.env.walls) {
+                    ctx.beginPath();
+                    ctx.moveTo(w.v.x, w.v.y);
+                    ctx.lineTo(w.w.x, w.w.y);
+                    ctx.stroke();
+                }
+
+                // Draw Editor Tools Preview
+                if (this.input.isDown) {
+                    ctx.strokeStyle = '#3b82f6';
+                    ctx.setLineDash([5, 5]);
+                    ctx.lineWidth = 2;
+                    if (this.tool === 'wall') {
+                        ctx.beginPath();
+                        ctx.moveTo(this.input.start.x, this.input.start.y);
+                        ctx.lineTo(this.input.current.x, this.input.current.y);
+                        ctx.stroke();
+                    } else if (this.tool === 'obstacle' || this.tool === 'safezone') {
+                        const rx = Math.min(this.input.start.x, this.input.current.x);
+                        const ry = Math.min(this.input.start.y, this.input.current.y);
+                        const rw = Math.abs(this.input.start.x - this.input.current.x);
+                        const rh = Math.abs(this.input.start.y - this.input.current.y);
+                        ctx.fillStyle = this.tool === 'obstacle' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)';
+                        ctx.fillRect(rx, ry, rw, rh);
+                        ctx.strokeRect(rx, ry, rw, rh);
+                    }
+                    ctx.setLineDash([]);
+                }
+
+                // Draw Fires
+                for (let f of this.env.fires) {
+                    const flicker = Math.random() * 0.1;
+                    const grad = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.r);
+                    grad.addColorStop(0, `rgba(255, 230, 0, ${0.9 - flicker})`);
+                    grad.addColorStop(0.3, `rgba(239, 68, 68, ${0.7 - flicker})`);
+                    grad.addColorStop(1, 'rgba(0,0,0,0)');
+
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Draw Agents
+                for (let a of this.env.agents) {
+                    if (a.state === C.STATE.DEAD) {
+                        // Cross for dead
+                        ctx.strokeStyle = '#94a3b8';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(a.pos.x - 4, a.pos.y - 4); ctx.lineTo(a.pos.x + 4, a.pos.y + 4);
+                        ctx.moveTo(a.pos.x + 4, a.pos.y - 4); ctx.lineTo(a.pos.x - 4, a.pos.y + 4);
+                        ctx.stroke();
+                        continue;
+                    }
+
+                    // Body
+                    ctx.fillStyle = a.state === C.STATE.SAFE ? '#10b981' :
+                        a.state === C.STATE.EXITED ? '#3b82f6' :
+                            a.state === C.STATE.EVACUATING ? '#f59e0b' : a.color;
+                    ctx.beginPath();
+                    ctx.arc(a.pos.x, a.pos.y, C.AGENT_RADIUS, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    // Heading pointer
+                    if (a.vel.magSq() > 1 && a.state !== C.STATE.SAFE) {
+                        const head = a.vel.normalize().mult(C.AGENT_RADIUS * 1.5).add(a.pos);
+                        ctx.beginPath();
+                        ctx.moveTo(a.pos.x, a.pos.y);
+                        ctx.lineTo(head.x, head.y);
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 1.5;
+                        ctx.stroke();
+                    }
+                }
+            },
+
+            saveData() {
+                const data = this.env.serialize();
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'evacsim-save.json';
+                a.click();
+                this.showToast('Configuration saved.');
+            },
+
+            loadData(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    try {
+                        const data = JSON.parse(ev.target.result);
+                        this.pause();
+                        this.simTime = 0;
+                        this.env.deserialize(data);
+                        this.updateStats();
+                        this.render();
+                        this.showToast('Configuration loaded.');
+                    } catch (err) {
+                        alert('Invalid file format.');
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = ''; // Reset
+            },
+
+            showToast(msg) {
+                const toast = document.createElement('div');
+                toast.className = 'bg-dark text-white px-3 py-2 rounded shadow-sm mb-2 opacity-0 transition-opacity';
+                toast.style.transition = 'opacity 0.3s';
+                toast.innerHTML = `<i class="bi bi-info-circle text-info me-2"></i>${msg}`;
+                const container = document.getElementById('toast-container');
+                container.appendChild(toast);
+
+                // Trigger reflow for transition
+                toast.offsetHeight;
+                toast.classList.remove('opacity-0');
+
+                setTimeout(() => {
+                    toast.classList.add('opacity-0');
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            App.init();
+        });
+
+    </script>
+</body>
+
+</html>
