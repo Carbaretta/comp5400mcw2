@@ -348,28 +348,34 @@
                         <h6 class="text-info my-1">Weight Settings</h6>
                         
                         <div class="col-md-4 mb-2">
-                            <label class="form-label mb-1"><span>Separation</span></label>
-                            <input type="range" class="form-range" id="test-sep" min="0" max="5" step="0.1" value="1.5">
+                            <label class="form-label mb-1"><span>Separation</span> <span id="lbl-test-sep">1.5</span></label>
+                            <input type="range" class="form-range" id="test-sep" min="0" max="5" step="0.1" value="1.5"
+                                oninput="State.wSep=parseFloat(this.value); document.getElementById('lbl-test-sep').innerText=this.value;">
                         </div>
                         <div class="col-md-4 mb-2">
-                            <label class="form-label mb-1"><span>Alignment</span></label>
-                            <input type="range" class="form-range" id="test-ali" min="0" max="5" step="0.1" value="1.0">
+                            <label class="form-label mb-1"><span>Alignment</span> <span id="lbl-test-ali">1.0</span></label>
+                            <input type="range" class="form-range" id="test-ali" min="0" max="5" step="0.1" value="1.0"
+                                oninput="State.wAli=parseFloat(this.value); document.getElementById('lbl-test-ali').innerText=this.value;">
                         </div>
                         <div class="col-md-4 mb-2">
-                            <label class="form-label mb-1"><span>Cohesion</span></label>
-                            <input type="range" class="form-range" id="test-coh" min="0" max="5" step="0.1" value="1.0">
+                            <label class="form-label mb-1"><span>Cohesion</span> <span id="lbl-test-coh">1.0</span></label>
+                            <input type="range" class="form-range" id="test-coh" min="0" max="5" step="0.1" value="1.0"
+                                oninput="State.wCoh=parseFloat(this.value); document.getElementById('lbl-test-coh').innerText=this.value;">
                         </div>
                         <div class="col-md-4 mb-2">
-                            <label class="form-label mb-1 text-danger"><span>Predator Fear</span></label>
-                            <input type="range" class="form-range" id="test-pred-fear" min="0" max="10" step="0.1" value="4.0">
+                            <label class="form-label mb-1 text-danger"><span>Predator Fear</span> <span id="lbl-test-pred-fear">4.0</span></label>
+                            <input type="range" class="form-range" id="test-pred-fear" min="0" max="10" step="0.1" value="4.0"
+                                oninput="State.wPred=parseFloat(this.value); document.getElementById('lbl-test-pred-fear').innerText=this.value;">
                         </div>
                         <div class="col-md-4 mb-2">
-                            <label class="form-label mb-1 text-warning"><span>Contagion</span></label>
-                            <input type="range" class="form-range" id="test-panic" min="0" max="5" step="0.1" value="2.0">
+                            <label class="form-label mb-1 text-warning"><span>Contagion</span> <span id="lbl-test-panic">2.0</span></label>
+                            <input type="range" class="form-range" id="test-panic" min="0" max="5" step="0.1" value="2.0"
+                                oninput="State.wPanic=parseFloat(this.value); document.getElementById('lbl-test-panic').innerText=this.value;">
                         </div>
                         <div class="col-md-4 mb-2">
-                            <label class="form-label mb-1 text-light"><span>Noise</span></label>
-                            <input type="range" class="form-range" id="test-noise" min="0" max="2" step="0.1" value="0.5">
+                            <label class="form-label mb-1 text-light"><span>Noise <span id="lbl-test-noise">0.5</span></span></label>
+                            <input type="range" class="form-range" id="test-noise" min="0" max="2" step="0.1" value="0.5"
+                                oninput="State.wNoise=parseFloat(this.value); document.getElementById('lbl-test-noise').innerText=this.value;">
                         </div>
                         
                         <div class="col-12"><hr class="my-1 border-secondary"></div>
