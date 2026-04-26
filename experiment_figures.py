@@ -141,6 +141,39 @@ def plot_baseline_average_nearest_neighbour_distance_over_time():
     plt.savefig(figures_folder/"baseline_average_nearest_neighbor_distance_over_time.png", dpi=300)
     plt.close()
 
+# Plot average prey-predator distance over time for the baseline conditions.
+def plot_baseline_average_prey_predator_distance_over_time():
+    plt.figure(figsize=(8, 5))
+
+    # Use clearer labels for the legened.
+    labels = {
+        "predator_1_nearest_baseline": "1 Predator: Nearest Strategy",
+        "predator_1_cluster_baseline": "1 Predator: Cluster Strategy",
+        "predator_25_nearest_baseline": "25 Predators: Nearest Strategy",
+        "predator_25_cluster_baseline": "25 Predators: Cluster Strategy",
+    }
+
+    predator_present_baseline_experiments = [
+        "predator_1_nearest_baseline",
+        "predator_1_cluster_baseline",
+        "predator_25_nearest_baseline",
+        "predator_25_cluster_baseline"
+    ]
+
+    # Plot one line for each predator-present baseline experiment.
+    for title in predator_present_baseline_experiments:
+        df = load_experiment(title)
+        plt.plot(df["Time Rounded (s)"], df["Avg Prey-Predator Distance"], label=labels[title])
+
+    plt.xlabel("Time (s)")
+    plt.ylabel("Average Prey-Predator Distance")
+    plt.title("Baseline Average Prey-Predator Distance over Time")
+    plt.grid(True, alpha=0.5)
+    plt.legend(fontsize=8)
+    plt.tight_layout()
+    plt.savefig(figures_folder/"baseline_average_prey_predator_distance_over_time.png", dpi=300)
+    plt.close()
+
 # Plot how parameter changes affect survival for one predator count.
 def plot_parameter_effects_on_survival(predator_count, output_name):
     fig, axes = plt.subplots(2, 3, figsize=(12, 7))
@@ -278,6 +311,7 @@ def save_targeting_condition_key():
 def main():
     plot_baseline_population_over_time()
     plot_baseline_average_nearest_neighbour_distance_over_time()
+    plot_baseline_average_prey_predator_distance_over_time()
     plot_parameter_effects_on_survival(1, "parameter_effects_on_survival_1_predator.png")
     plot_parameter_effects_on_survival(25, "parameter_effects_on_survival_25_predators.png")
     plot_targeting_strategy_comparison()
