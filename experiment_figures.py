@@ -182,6 +182,7 @@ def plot_parameter_effects_on_survival(predator_count, output_name):
     # Set the x-axis positions and labels once.
     x_labels = [level_display_name(level) for level in levels]
     x = np.arange(len(x_labels))
+    bar_width = 0.3
 
     # Each subplot is for one variable.
     for ax, variable in zip(axes, variables):
@@ -201,13 +202,13 @@ def plot_parameter_effects_on_survival(predator_count, output_name):
             cluster_values.append(final_survival_percentage(cluster_title))
 
         # Plot nearest and cluster targeting on the same subplot.
-        ax.plot(x, nearest_values, marker="o", label="Nearest")
-        ax.plot(x, cluster_values, marker="o", label="Cluster")
+        ax.bar(x - bar_width/2, nearest_values, width=bar_width, label="Nearest")
+        ax.bar(x + bar_width/2, cluster_values, width=bar_width, label="Cluster")
         ax.set_title(variable_display_name(variable))
         ax.set_xticks(x)
         ax.set_xticklabels(x_labels, rotation=20)
         ax.set_ylabel("Final Survival (%)")
-        ax.grid(True, alpha=0.5)
+        ax.grid(True, alpha=0.5, axis="y")
 
     # Use one shared legend for the whole figure.
     handles, labels = axes[0].get_legend_handles_labels()
@@ -248,6 +249,7 @@ def experiment_title_from_condition(predator_count, targeting, condition):
 # Compre nearest and cluster targeting across matched conditions.
 def plot_targeting_strategy_comparison():
     fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
+    bar_width = 0.3
     
     # Make one subplot for 1 predator and one for 25 predators.
     for ax, predator_count in zip(axes, [1, 25]):
@@ -267,8 +269,8 @@ def plot_targeting_strategy_comparison():
         x = np.arange(len(conditions))
 
         # Plot the two targeting strategies on the same subplot.
-        ax.plot(x, nearest_values, marker="o", label="Nearest")
-        ax.plot(x, cluster_values, marker="o", label="Cluster")
+        ax.bar(x - bar_width/2, nearest_values, width=bar_width, label="Nearest")
+        ax.bar(x + bar_width/2, cluster_values, width=bar_width, label="Cluster")
 
         if predator_count == 1:
             ax.set_title("1 Predator")
@@ -279,7 +281,7 @@ def plot_targeting_strategy_comparison():
         ax.set_xticks(x)
         ax.set_xticklabels(range(1, len(conditions) + 1))
         ax.set_ylabel("Final Survival (%)")
-        ax.grid(True, alpha=0.5)
+        ax.grid(True, alpha=0.5, axis="y")
 
     # Use one shared legend for the whole figure.
     handles, labels = axes[0].get_legend_handles_labels()
