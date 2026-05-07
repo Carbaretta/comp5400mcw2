@@ -1,6 +1,14 @@
+### Foreword
+
+This is the code repository from COMP5400M CW2 2026, University of Leeds.
+Ilakkia Arunkumar, 201592510 (sc22ia@leeds.ac.uk) 
+Jacob Stockwell, 201518466 (ed20jes@leeds.ac.uk) 
+Dorothea Pavlopoulou, 201640877(sc22dp2@leeds.ac.uk)
+
+It accompanies the report entitled "Investigating How Flocking Behaviour Affects the Survival of Fish under Predation"
 # Fish Flocking & Predator Simulation
 
-This project contains two interactive web-based simulations designed to demonstrate emergent flocking behavior using autonomous agent-based AI. The primary file is `fish_sim.html`, which implements an advanced iteration of Craig Reynolds' classic Boids algorithm.
+This project contains two interactive web-based simulations designed to demonstrate emergent flocking behavior using autonomous agent-based AI. The primary file is `fish_sim.html`, which implements an advanced iteration of Craig Reynolds' classic Boids algorithm. For the purposes of the coursework mentioned above, only `fish_sim.html` was used, however there are other code artifacts and samples in here that were created as part of an exploratory phase before we settled on our final title. `fish_sim_simple.html` is the core Boids simulation without any of our added features.
 
 ## 1. Core Boids Rules
 
@@ -39,6 +47,7 @@ It handles this using an $O(N^2)$ **Single-Linkage Agglomerative Clustering** te
 - The predator then steers directly toward this mathematical pivot rather than a physical agent (visibly marked by a faint red crosshair during the simulation).
 
 ## 4. Using the Simulator (UI Guide)
+To run the simulator, double-click `fish_sim.html`. It should run in any modern web browser. It has been tested in Chrome.
 
 The sidebar provides real-time controls over the environment without needing to pause or refresh the simulation.
 
@@ -60,7 +69,7 @@ The sidebar provides real-time controls over the environment without needing to 
 
 ## 5. `fish_sim.html` vs  `fish_sim_simple.html`
 
-The project was divided into two distinct files to demonstrate the difference between baseline algorithms and more advanced game AI.
+The project was divided into two distinct files to demonstrate the difference between the baseline Boids algorithms and our more advanced implementation. **Only fish_sim.html was used in the testing of our coursework submission** 
 
 **The "Simple" Version (`fish_sim_simple.html`)**
 - Implements only the foundational rules: Separation, Alignment, Cohesion, and Fleeing.
